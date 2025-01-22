@@ -163,11 +163,11 @@ impl Inclusion for InclusionService {
     }
 }
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    #[arg(short, long)]
-    db_path: String,
+        Ok(Response::new(GetKeccakInclusionResponse {
+            status: 0,
+            response_value: None,
+        }))
+    }
 }
 
 #[tokio::main]

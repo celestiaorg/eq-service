@@ -1,8 +1,8 @@
 use celestia_rpc::{BlobClient, Client, HeaderClient};
-use clap::{command, Parser};
-use celestia_types::nmt::Namespace;
 use celestia_types::blob::Commitment;
-use eq_common::{create_inclusion_proof_input};
+use celestia_types::nmt::Namespace;
+use clap::{command, Parser};
+use eq_common::create_inclusion_proof_input;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -24,7 +24,8 @@ async fn main() {
         .await
         .expect("Failed creating celestia rpc client");
 
-    let header = client.header_get_by_height(args.height)
+    let header = client
+        .header_get_by_height(args.height)
         .await
         .expect("Failed getting header");
 
@@ -32,31 +33,32 @@ async fn main() {
         hex::decode(&args.commitment)
             .expect("Invalid commitment hex")
             .try_into()
-            .expect("Invalid commitment length")
+            .expect("Invalid commitment length"),
     );
 
-    let namespace = Namespace::new_v0(&hex::decode(&args.namespace).expect("Invalid namespace hex"))
-        .expect("Invalid namespace");
+    let namespace =
+        Namespace::new_v0(&hex::decode(&args.namespace).expect("Invalid namespace hex"))
+            .expect("Invalid namespace");
 
     println!("getting blob...");
-    let blob = client.blob_get(args.height, namespace, commitment)
+    let blob = client
+        .blob_get(args.height, namespace, commitment)
         .await
         .expect("Failed getting blob");
 
     println!("getting nmt multiproofs...");
-    let nmt_multiproofs = client.blob_get_proof(args.height, namespace, commitment)
+    let nmt_multiproofs = client
+        .blob_get_proof(args.height, namespace, commitment)
         .await
         .expect("Failed getting nmt multiproofs");
 
     let input = create_inclusion_proof_input(&blob, &header, nmt_multiproofs)
         .expect("Failed creating inclusion proof input");
 
-    let json = serde_json::to_string_pretty(&input)
-        .expect("Failed serializing proof input to JSON");
+    let json =
+        serde_json::to_string_pretty(&input).expect("Failed serializing proof input to JSON");
 
-    std::fs::write("proof_input.json", json)
-        .expect("Failed writing proof input to file");
+    std::fs::write("proof_input.json", json).expect("Failed writing proof input to file");
 
     println!("Wrote proof input to proof_input.json");
-
 }

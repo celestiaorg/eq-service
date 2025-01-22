@@ -1,17 +1,24 @@
-use serde::{Deserialize, Serialize};
-use nmt_rs::{
-    simple_merkle::{db::MemDb, proof::Proof, tree::{MerkleTree, MerkleHash}},
-    TmSha2Hasher,
-    NamespacedHash
+use celestia_types::{
+    blob::Blob,
+    nmt::{Namespace, NamespaceProof, NamespacedHashExt},
+    ExtendedHeader,
 };
-use tendermint::{hash::Hash as TmHash};
+use nmt_rs::{
+    simple_merkle::{
+        db::MemDb,
+        proof::Proof,
+        tree::{MerkleHash, MerkleTree},
+    },
+    NamespacedHash, TmSha2Hasher,
+};
+use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
+use std::cmp::max;
+use tendermint::hash::Hash as TmHash;
 use tendermint_proto::{
     v0_37::{types::BlockId as RawBlockId, version::Consensus as RawConsensusVersion},
     Protobuf,
 };
-use std::cmp::max;
-use sha3::{Keccak256, Digest};
-use celestia_types::{nmt::{NamespaceProof, NamespacedHashExt, Namespace}, blob::Blob, ExtendedHeader};
 
 mod error;
 use error::InclusionServiceError;
@@ -42,7 +49,11 @@ pub struct KeccakInclusionToDataRootProofOutput {
     pub data_root: Vec<u8>,
 }
 
-pub fn create_inclusion_proof_input(blob: &Blob, header: &ExtendedHeader, nmt_multiproofs: Vec<NamespaceProof>) -> Result<KeccakInclusionToDataRootProofInput, InclusionServiceError> {
+pub fn create_inclusion_proof_input(
+    blob: &Blob,
+    header: &ExtendedHeader,
+    nmt_multiproofs: Vec<NamespaceProof>,
+) -> Result<KeccakInclusionToDataRootProofInput, InclusionServiceError> {
     let eds_row_roots = header.dah.row_roots();
     let eds_column_roots = header.dah.column_roots();
 
@@ -51,8 +62,12 @@ pub fn create_inclusion_proof_input(blob: &Blob, header: &ExtendedHeader, nmt_mu
     let ods_size = eds_size / 2;
 
     let blob_index = blob.index.ok_or(InclusionServiceError::MissingBlobIndex)?;
-    let blob_size: u64 = max(1, blob.to_shares()
-        .map_err(|e| InclusionServiceError::ShareConversionError(e.to_string()))?.len() as u64);
+    let blob_size: u64 = max(
+        1,
+        blob.to_shares()
+            .map_err(|e| InclusionServiceError::ShareConversionError(e.to_string()))?
+            .len() as u64,
+    );
     let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
     let ods_index = blob_index - (first_row_index * ods_size);
 
@@ -73,7 +88,10 @@ pub fn create_inclusion_proof_input(blob: &Blob, header: &ExtendedHeader, nmt_mu
     }
 
     // assert that the row root tree equals the data hash
-    assert_eq!(row_root_tree.root(), header.header.data_hash.unwrap().as_bytes());
+    assert_eq!(
+        row_root_tree.root(),
+        header.header.data_hash.unwrap().as_bytes()
+    );
     // Get range proof of the row roots spanned by the blob
     // +1 is so we include the last row root
     let row_root_multiproof =
@@ -86,14 +104,22 @@ pub fn create_inclusion_proof_input(blob: &Blob, header: &ExtendedHeader, nmt_mu
         .collect::<Vec<[u8; 32]>>();
     row_root_multiproof
         .verify_range(
-            header.header.data_hash.unwrap().as_bytes().try_into().unwrap(),
+            header
+                .header
+                .data_hash
+                .unwrap()
+                .as_bytes()
+                .try_into()
+                .unwrap(),
             &leaves_hashed[first_row_index as usize..(last_row_index + 1) as usize],
         )
         .map_err(|_| InclusionServiceError::RowRootVerificationFailed)?;
 
     let mut hasher = Keccak256::new();
     hasher.update(&blob.data);
-    let hash: [u8; 32] = hasher.finalize().try_into()
+    let hash: [u8; 32] = hasher
+        .finalize()
+        .try_into()
         .map_err(|_| InclusionServiceError::KeccakHashConversion)?;
 
     Ok(KeccakInclusionToDataRootProofInput {
@@ -104,11 +130,16 @@ pub fn create_inclusion_proof_input(blob: &Blob, header: &ExtendedHeader, nmt_mu
         nmt_multiproofs,
         row_root_multiproof,
         row_roots: eds_row_roots[first_row_index as usize..=last_row_index as usize].to_vec(),
-        data_root: header.header.data_hash.unwrap().encode_vec()
+        data_root: header.header.data_hash.unwrap().encode_vec(),
     })
 }
 
-pub fn create_header_field_tree(header: &ExtendedHeader) -> (MerkleTree<MemDb<[u8; 32]>, TmSha2Hasher>, Proof<TmSha2Hasher>) {
+pub fn create_header_field_tree(
+    header: &ExtendedHeader,
+) -> (
+    MerkleTree<MemDb<[u8; 32]>, TmSha2Hasher>,
+    Proof<TmSha2Hasher>,
+) {
     let hasher = TmSha2Hasher {};
     let mut header_field_tree: MerkleTree<MemDb<[u8; 32]>, TmSha2Hasher> =
         MerkleTree::with_hasher(hasher);
@@ -143,7 +174,7 @@ pub fn create_header_field_tree(header: &ExtendedHeader) -> (MerkleTree<MemDb<[u
     }
 
     let (data_hash_bytes_from_tree, data_hash_proof) = header_field_tree.get_index_with_proof(6);
-    
+
     // Verify the data hash
     let data_hash_from_tree = TmHash::decode_vec(&data_hash_bytes_from_tree).unwrap();
     assert_eq!(
@@ -163,4 +194,3 @@ pub fn create_header_field_tree(header: &ExtendedHeader) -> (MerkleTree<MemDb<[u
 
     (header_field_tree, data_hash_proof)
 }
-

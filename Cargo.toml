@@ -1,25 +1,25 @@
 [workspace]
 members = ["service", "program-keccak-inclusion", "common", "blob-tool", "runner-keccak-inclusion"]
+default-members = ["service"]
 resolver = "2"
 
 [workspace.dependencies]
 celestia-types = {git="https://github.com/eigerco/lumina.git"}
 celestia-rpc = {git="https://github.com/eigerco/lumina.git"}
-nmt-rs = "*"
-sp1-zkvm = {version="4.0.1", features=["verify"]}
-sp1-sdk = {version="4.0.1"}
-serde = { version = "1.0.200", default-features = false, features = ["derive"] }
-sha3 = "0.10.8"
+nmt-rs = "0.2"
+sp1-zkvm = {version="4.0", features=["verify"]}
+sp1-sdk = {version="4.0"}
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+sha3 = "0.10"
 tendermint-proto = "*"
 tendermint = "*"
-bincode = "1.3.3"
-clap = {version="4.5.18", features=["derive"]}
+bincode = "1.3"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-hex = "0.4.3"
-tonic = "*"
-tonic-build = "*"
-serde_json = "1.0.135"
-thiserror = "2.0.11"
+hex = "0.4"
+tonic = "0.12"
+tonic-build = "0.12"
+serde_json = "1.0"
+thiserror = "2.0"
 
 [patch.crates-io]
 sha3-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha3", branch = "patch-sha3-v0.10.8" }

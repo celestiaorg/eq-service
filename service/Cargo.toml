@@ -19,7 +19,6 @@ tendermint = {workspace = true}
 rkyv = "0.8.9"
 sled = "0.34.7"
 eq-common = {path = "../common"}
-clap = {workspace = true}
 sp1-sdk = {workspace=true}
 sha3 = {workspace=true}
 
