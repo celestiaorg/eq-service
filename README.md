@@ -8,6 +8,7 @@ A NMT proof is transformed into keccak inclusion for data roots using a zkVM.
 ## Prerequisites
 
 - Rust & Cargo - [install instructions](https://www.rust-lang.org/tools/install)
+- Succinct's SP1 zkVM Toolchain - [install instructions](https://docs.succinct.xyz/docs/getting-started/install)
 - Protocol Buffers (Protobuf) compiler - [official examples](https://github.com/hyperium/tonic/tree/master/examples#examples) contain install instructions
 - Celestia Light Node - [installed](https://docs.celestia.org/how-to-guides/celestia-node) & [running](https://docs.celestia.org/tutorials/node-tutorial#auth-token) accessible on `localhost`, or elsewhere. Alternatively, use [an RPC provider](https://github.com/celestiaorg/awesome-celestia/?tab=readme-ov-file#node-operator-contributions) you trust.
 - Just - a modern alternative to `make` [installed](https://just.systems/man/en/packages.html)
@@ -88,10 +89,20 @@ The service uses [Succinct's pover network](https://docs.succinct.xyz/docs/gener
 
 To interact with the service, clients can use any gRPC client that supports protobuf messages. Here is an example using the [`grpcurl`](https://github.com/fullstorydev/grpcurl) CLI tool:
 
+### Connect to a Celestia Node
+
+See the [How-to-guides on nodes](https://docs.celestia.org/how-to-guides/light-node) to run one yourself, or choose a provider.
+Set the corret info in your `.env` file of choice.
+
+### Launch the Eq Service
+
 ```sh
 # Fetching the Keccak inclusion proof for a specific Celestia commitment, namespace, and height
-grpcurl -plaintext localhost:50051 eqs.Inclusion/GetKeccakInclusion \
-  -d '{"commitment": "<your_commitment_hex>", "namespace": "<your_namespace_hex>", "height": 1234}'
+grpcurl -plaintext $EQ_SOCKET eqs.Inclusion/GetKeccakInclusion \
+  -d '{"commitment": "<your_commitment_hex>", "namespace": "<your_namespace_hex>", "height": <block height (integer)>}'
+
+# Working example using Celestia's mainnet network
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto -d '{"height": 4214864, "namespace": "3q2+796tvu8=", "commitment":"YcARQRj9KE/7sSXd4090FAONKkPz9ajYKIZq8liv3A0="}' -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
 ```
 
 ## Development
