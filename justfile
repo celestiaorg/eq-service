@@ -17,10 +17,10 @@ _pre-build:
     {{ if path_exists(elf-path) == "false" { `cargo b -r -p eq-program-keccak-inclusion` } else { "" } }}
 
 run *FLAGS: build
-    cargo r -- {{FLAGS}}
+    cargo r -- {{ FLAGS }}
 
-run-relese *FLAGS: build-release
-    cargo r -r -- {{FLAGS}}
+run-release *FLAGS: build-release
+    cargo r -r -- {{ FLAGS }}
 
 build: _pre-build
     cargo b

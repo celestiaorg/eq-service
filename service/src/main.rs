@@ -18,9 +18,8 @@ use sp1_sdk::{Prover, ProverClient, SP1ProofWithPublicValues, SP1Stdin};
 use eq_common::create_inclusion_proof_input;
 use serde::{Deserialize, Serialize};
 
-const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
-    "../../target/release/eq-program-keccak-inclusion"
-);
+const KECCAK_INCLUSION_ELF: &[u8] =
+    include_bytes!("../../target/release/eq-program-keccak-inclusion");
 
 #[derive(Serialize, Deserialize)]
 pub struct Job {
@@ -148,17 +147,10 @@ impl Inclusion for InclusionService {
     }
 }
 
-        Ok(Response::new(GetKeccakInclusionResponse {
-            status: 0,
-            response_value: None,
-        }))
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args = Args::parse();
-    let db = sled::open(args.db_path)?;
+    let db_path = std::env::var("EQ_DB_PATH")?;
+    let db = sled::open(db_path)?;
 
     let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").expect("Token not provided");
     let client = Client::new("ws://localhost:26658", Some(&node_token))
@@ -168,7 +160,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
     let inclusion_service = InclusionService {
         client: Arc::new(client),
-        db: db,
+        db,
     };
 
     Server::builder()
