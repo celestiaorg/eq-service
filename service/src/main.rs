@@ -12,25 +12,10 @@ use eqs::{
 
 use celestia_rpc::{BlobClient, Client, HeaderClient};
 use celestia_types::blob::Commitment;
-use celestia_types::nmt::{Namespace, NamespacedHashExt};
-use clap::Parser;
-use nmt_rs::{
-    simple_merkle::{
-        db::MemDb,
-        proof::Proof,
-        tree::{MerkleHash, MerkleTree},
-    },
-    TmSha2Hasher,
-};
-use sp1_sdk::{NetworkProver, Prover, ProverClient, SP1Proof, SP1ProofWithPublicValues, SP1Stdin};
-use std::cmp::max;
-use tendermint::{hash::Algorithm, Hash as TmHash};
-use tendermint_proto::{
-    v0_37::{types::BlockId as RawBlockId, version::Consensus as RawConsensusVersion},
-    Protobuf,
-};
+use celestia_types::nmt::Namespace;
+use sp1_sdk::{Prover, ProverClient, SP1ProofWithPublicValues, SP1Stdin};
 
-use eq_common::{create_inclusion_proof_input, KeccakInclusionToDataRootProofInput};
+use eq_common::create_inclusion_proof_input;
 use serde::{Deserialize, Serialize};
 
 const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
