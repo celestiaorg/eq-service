@@ -1,4 +1,4 @@
-# Data Avalibility Equivalence Service
+# Data Availability Equivalence Service
 
 A service acting as a "cryptographic adapter"[^1] providing proofs that data exists on [Celestia](https://celestia.org/) that are efficiently verifiable on EVM networks.
 A NMT proof is transformed into keccak inclusion for data roots using a zkVM.
@@ -7,7 +7,7 @@ A NMT proof is transformed into keccak inclusion for data roots using a zkVM.
 
 ## Prerequisites
 
-- Rust & Cargo - [intall instructions](https://www.rust-lang.org/tools/install)
+- Rust & Cargo - [install instructions](https://www.rust-lang.org/tools/install)
 - Protocol Buffers (Protobuf) compiler - [official examples](https://github.com/hyperium/tonic/tree/master/examples#examples) contain install instructions
 - Celestia Light Node - [installed](https://docs.celestia.org/how-to-guides/celestia-node) & [running](https://docs.celestia.org/tutorials/node-tutorial#auth-token) accessible on `localhost`, or elsewhere. Alternatively, use [an RPC provider](https://github.com/celestiaorg/awesome-celestia/?tab=readme-ov-file#node-operator-contributions) you trust.
 - Just - a modern alternative to `make` [installed](https://just.systems/man/en/packages.html)
@@ -35,11 +35,11 @@ cp example.env .env
 # edit .env
 ```
 
-This config is overridable by existing enviroment variables:
+This config is overridable by existing environment variables:
 
 ```sh
 # Set a new database location, as a one-off
-DB_PATH="/tmp/just-playin" just rr
+DB_PATH="/tmp/just-playing" just rr
 
 # Set a new database for the remainder of this shell's life
 export DB_PATH="/some/other/place"
@@ -70,7 +70,7 @@ flowchart TB
     style jobs fill:#888
 ```
 
-### Celestia Data Avaliblity (DA)
+### Celestia Data Availability (DA)
 
 The service interacts with a Celestia Node using gRPC to:
 
