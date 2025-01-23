@@ -18,7 +18,7 @@ message GetKeccakInclusionResponse {
     }
     Status status = 1;
     oneof response_value {
-        string proof_id = 2;    // Used when status is WAITING
+        bytes proof_id = 2;    // Used when status is WAITING
         bytes proof = 3;        // Used when status is COMPLETE
         string error_message = 4;       // Used when status is FAILED
     }

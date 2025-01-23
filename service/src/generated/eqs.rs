@@ -64,8 +64,8 @@ pub mod get_keccak_inclusion_response {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum ResponseValue {
         /// Used when status is WAITING
-        #[prost(string, tag = "2")]
-        ProofId(::prost::alloc::string::String),
+        #[prost(bytes, tag = "2")]
+        ProofId(::prost::alloc::vec::Vec<u8>),
         /// Used when status is COMPLETE
         #[prost(bytes, tag = "3")]
         Proof(::prost::alloc::vec::Vec<u8>),
