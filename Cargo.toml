@@ -1,5 +1,6 @@
 [workspace]
 members = ["service", "program-keccak-inclusion", "common", "blob-tool", "runner-keccak-inclusion", "eqs-client"]
+default-members = ["service"]
 resolver = "2"
 
 [workspace.dependencies]
