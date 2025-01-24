@@ -17,9 +17,9 @@ use sp1_sdk::{Prover, ProverClient, SP1ProofWithPublicValues, SP1Stdin};
 use tokio::sync::mpsc;
 
 use eq_common::{
-    create_inclusion_proof_input, InclusionServiceError, KeccakInclusionToDataRootProofInput,
+    create_inclusion_proof_input, InclusionServiceError,
 };
-use log::{debug, error, info, log_enabled, Level};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use sled::Tree as SledTree;
 
