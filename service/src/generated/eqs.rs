@@ -36,8 +36,9 @@ pub mod get_keccak_inclusion_response {
     #[repr(i32)]
     pub enum Status {
         Waiting = 0,
-        Complete = 1,
-        Failed = 2,
+        InProgress = 1,
+        Complete = 2,
+        Failed = 3,
     }
     impl Status {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -47,6 +48,7 @@ pub mod get_keccak_inclusion_response {
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Self::Waiting => "WAITING",
+                Self::InProgress => "IN_PROGRESS",
                 Self::Complete => "COMPLETE",
                 Self::Failed => "FAILED",
             }
@@ -55,6 +57,7 @@ pub mod get_keccak_inclusion_response {
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "WAITING" => Some(Self::Waiting),
+                "IN_PROGRESS" => Some(Self::InProgress),
                 "COMPLETE" => Some(Self::Complete),
                 "FAILED" => Some(Self::Failed),
                 _ => None,
@@ -63,7 +66,7 @@ pub mod get_keccak_inclusion_response {
     }
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum ResponseValue {
-        /// Used when status is WAITING
+        /// Used when status is IN_PROGRESS, this is the proof id of the prover network
         #[prost(bytes, tag = "2")]
         ProofId(::prost::alloc::vec::Vec<u8>),
         /// Used when status is COMPLETE

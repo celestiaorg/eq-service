@@ -13,12 +13,13 @@ message GetKeccakInclusionRequest {
 message GetKeccakInclusionResponse {
     enum Status {
         WAITING = 0;
-        COMPLETE = 1;
-        FAILED = 2;
+        IN_PROGRESS = 1;
+        COMPLETE = 2;
+        FAILED = 3;
     }
     Status status = 1;
     oneof response_value {
-        bytes proof_id = 2;    // Used when status is WAITING
+        bytes proof_id = 2;    // Used when status is IN_PROGRESS, this is the proof id of the prover network
         bytes proof = 3;        // Used when status is COMPLETE
         string error_message = 4;       // Used when status is FAILED
     }

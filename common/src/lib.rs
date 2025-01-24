@@ -21,7 +21,7 @@ use tendermint_proto::{
 };
 
 mod error;
-use error::InclusionServiceError;
+pub use error::InclusionServiceError;
 
 /*
     The types of proofs we expect to support:

@@ -16,4 +16,10 @@ pub enum InclusionServiceError {
 
     #[error("Failed to create inclusion proof input: {0}")]
     GeneralError(String),
+
+    #[error("Failed to query Celestia: {0}")]
+    CelestiaError(String),
+
+    #[error("Invalid parameter: {0}")]
+    InvalidParameter(String),
 }
