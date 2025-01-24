@@ -58,7 +58,6 @@ run *FLAGS: _pre-run build
 
 run-release *FLAGS: _pre-run build-release
     #!/usr/bin/env bash
-    set -euxo pipefail
     source .env
     cargo r -r -- {{ FLAGS }}
 
@@ -70,7 +69,6 @@ build-release: _pre-build
 
 clean:
     #!/usr/bin/env bash
-    set -euxo pipefail
     cargo clean
 
 fmt:
