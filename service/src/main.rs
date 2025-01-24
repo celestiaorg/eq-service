@@ -72,9 +72,13 @@ impl Inclusion for InclusionService {
 
         // First check proof_tree for completed/failed proofs
         debug!("Checking proof_tree for finished/failed proofs");
-        if let Some(proof_data) = self.proof_db.get(&job_key).map_err(|e| Status::internal(e.to_string()))? {
-            let job_status: JobStatus = bincode::deserialize(&proof_data)
-                .map_err(|e| Status::internal(e.to_string()))?;
+        if let Some(proof_data) = self
+            .proof_db
+            .get(&job_key)
+            .map_err(|e| Status::internal(e.to_string()))?
+        {
+            let job_status: JobStatus =
+                bincode::deserialize(&proof_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
                 JobStatus::Completed(proof) => {
                     return Ok(Response::new(GetKeccakInclusionResponse {
@@ -97,9 +101,13 @@ impl Inclusion for InclusionService {
 
         // Then check queue_tree for pending proofs
         debug!("Checking queue_tree for pending proofs");
-        if let Some(queue_data) = self.queue_db.get(&job_key).map_err(|e| Status::internal(e.to_string()))? {
-            let job_status: JobStatus = bincode::deserialize(&queue_data)
-                .map_err(|e| Status::internal(e.to_string()))?;
+        if let Some(queue_data) = self
+            .queue_db
+            .get(&job_key)
+            .map_err(|e| Status::internal(e.to_string()))?
+        {
+            let job_status: JobStatus =
+                bincode::deserialize(&queue_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
                 JobStatus::Pending(job_id) => {
                     return Ok(Response::new(GetKeccakInclusionResponse {
@@ -110,7 +118,7 @@ impl Inclusion for InclusionService {
                 JobStatus::Waiting => {
                     return Ok(Response::new(GetKeccakInclusionResponse {
                         status: ResponseStatus::Waiting as i32,
-                        response_value: Some(ResponseValue::StatusMessage("queued".to_string()))
+                        response_value: Some(ResponseValue::StatusMessage("queued".to_string())),
                     }));
                 }
                 _ => {
@@ -126,13 +134,19 @@ impl Inclusion for InclusionService {
             .map_err(|e| Status::internal(e.to_string()))?;
 
         let waiting_status = JobStatus::Waiting;
-        self.queue_db.insert(&job_key, bincode::serialize(&waiting_status).map_err(|e| Status::internal(e.to_string()))?)
+        self.queue_db
+            .insert(
+                &job_key,
+                bincode::serialize(&waiting_status).map_err(|e| Status::internal(e.to_string()))?,
+            )
             .map_err(|e| Status::internal(e.to_string()))?;
 
         debug!("Returning waiting response...");
         Ok(Response::new(GetKeccakInclusionResponse {
             status: ResponseStatus::Waiting as i32,
-            response_value: Some(ResponseValue::StatusMessage("sent to proof worker".to_string()))
+            response_value: Some(ResponseValue::StatusMessage(
+                "sent to proof worker".to_string(),
+            )),
         }))
     }
 }
@@ -156,13 +170,22 @@ impl InclusionService {
                 hex::encode(job.commitment.clone())
             );
             let client = Arc::clone(&self.client);
-            tokio::spawn(prove(job, client, self.queue_db.clone(), self.proof_db.clone()));
+            tokio::spawn(prove(
+                job,
+                client,
+                self.queue_db.clone(),
+                self.proof_db.clone(),
+            ));
         }
     }
 }
 
-async fn prove(job: Job, client: Arc<Client>, queue_tree: SledTree, proof_tree: SledTree) -> Result<(), InclusionServiceError> {
-
+async fn prove(
+    job: Job,
+    client: Arc<Client>,
+    queue_tree: SledTree,
+    proof_tree: SledTree,
+) -> Result<(), InclusionServiceError> {
     let network_prover = ProverClient::builder().network().build();
     let (pk, vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
 
@@ -309,7 +332,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Failed creating celestia rpc client");
 
     let (job_sender, job_receiver) = mpsc::unbounded_channel::<Job>();
-    let inclusion_service = InclusionService{
+    let inclusion_service = InclusionService {
         client: Arc::new(client),
         queue_db: queue_tree.clone(),
         proof_db: proof_tree.clone(),
