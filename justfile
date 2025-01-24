@@ -10,20 +10,46 @@ alias c := clean
 
 zkvm-elf-path := "./target/elf-compilation/riscv32im-succinct-zkvm-elf/release/eq-program-keccak-inclusion"
 env-settings := "./.env"
+sp1up-path := shell("which sp1up")
+cargo-prove-path := shell("which cargo-prove")
 
-# Private just helper recipe
-_pre-build:
-    {{ if shell("which cargo-prove") == "" { `echo "zkVM Compiler missing! See README." && exit 1` } else { "" } }}
-    {{ if path_exists(zkvm-elf-path) == "false" { `cargo prove build -p eq-program-keccak-inclusion 1> /dev/null` } else { "" } }}
-    {{ if path_exists(env-settings) == "false" { `echo "missing required .env file! see example.env"` } else { "" } }}
-
-run *FLAGS: build
+initial-config-installs:
     #!/usr/bin/env bash
-    set -euxo pipefail
+    echo {{ path_exists(sp1up-path) }}
+    if ! {{ path_exists(sp1up-path) }}; then
+        curl -L https://sp1.succinct.xyz | bash
+    fi
+    echo "✅ sp1up installed"
+
+    if ! {{ path_exists(cargo-prove-path) }}; then
+        {{ sp1up-path }}
+    else
+        echo -e "✅ cargo-prove installed\n     ⚠️👀NOTE: Check you have the correct version needed for this project!"
+    fi
+
+_pre-build:
+    #!/usr/bin/env bash
+    if ! {{ path_exists(cargo-prove-path) }}; then
+        echo -e "⛔ Missing zkVM Compiler.\nRun `just initial-config-installs` to prepare your environment"
+        exit 1
+    fi
+    if ! {{ path_exists(zkvm-elf-path) }}; then
+        cargo prove build -p eq-program-keccak-inclusion
+    fi
+
+_pre-run:
+    #!/usr/bin/env bash
+    if ! {{ path_exists(env-settings) }}; then
+        echo -e "⛔ Missing required `.env` file.\nCreate one with:\n\n\tcp example.env .env\n\nAnd then edit to adjust settings"
+        exit 1
+    fi
+
+run *FLAGS: _pre-run build
+    #!/usr/bin/env bash
     source .env
     cargo r -- {{ FLAGS }}
 
-run-release *FLAGS: build-release
+run-release *FLAGS: _pre-run build-release
     #!/usr/bin/env bash
     set -euxo pipefail
     source .env
