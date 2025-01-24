@@ -22,5 +22,6 @@ message GetKeccakInclusionResponse {
         bytes proof_id = 2;    // Used when status is IN_PROGRESS, this is the proof id of the prover network
         bytes proof = 3;        // Used when status is COMPLETE
         string error_message = 4;       // Used when status is FAILED
+        string status_message = 5;       // Used when status is WAITING, this is the status message of the prover network
     }
 }

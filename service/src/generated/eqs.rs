@@ -15,7 +15,7 @@ pub struct GetKeccakInclusionRequest {
 pub struct GetKeccakInclusionResponse {
     #[prost(enumeration = "get_keccak_inclusion_response::Status", tag = "1")]
     pub status: i32,
-    #[prost(oneof = "get_keccak_inclusion_response::ResponseValue", tags = "2, 3, 4")]
+    #[prost(oneof = "get_keccak_inclusion_response::ResponseValue", tags = "2, 3, 4, 5")]
     pub response_value: ::core::option::Option<
         get_keccak_inclusion_response::ResponseValue,
     >,
@@ -75,6 +75,9 @@ pub mod get_keccak_inclusion_response {
         /// Used when status is FAILED
         #[prost(string, tag = "4")]
         ErrorMessage(::prost::alloc::string::String),
+        /// Used when status is WAITING, this is the status message of the prover network
+        #[prost(string, tag = "5")]
+        StatusMessage(::prost::alloc::string::String),
     }
 }
 /// Generated client implementations.
