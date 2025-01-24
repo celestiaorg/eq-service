@@ -7,4 +7,3 @@ edition = "2021"
 sp1-sdk = {workspace = true}
 eq-common = {path = "../common"}
 serde_json = {workspace = true}
-celestia-types = {workspace = true}

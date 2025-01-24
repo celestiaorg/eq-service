@@ -16,10 +16,12 @@ use celestia_types::nmt::Namespace;
 use sp1_sdk::{Prover, ProverClient, SP1ProofWithPublicValues, SP1Stdin};
 use tokio::sync::mpsc;
 
-use eq_common::{KeccakInclusionToDataRootProofInput, create_inclusion_proof_input, InclusionServiceError};
-use serde::{Serialize, Deserialize};
+use eq_common::{
+    create_inclusion_proof_input, InclusionServiceError, KeccakInclusionToDataRootProofInput,
+};
+use log::{debug, error, info, log_enabled, Level};
+use serde::{Deserialize, Serialize};
 use sled::Tree as SledTree;
-use log::{debug, error, log_enabled, info, Level};
 
 const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
     "../../target/elf-compilation/riscv32im-succinct-zkvm-elf/release/eq-program-keccak-inclusion"
@@ -60,7 +62,10 @@ impl Inclusion for InclusionService {
         request: Request<GetKeccakInclusionRequest>,
     ) -> Result<Response<GetKeccakInclusionResponse>, Status> {
         let request = request.into_inner();
-        info!("Received grpc request for commitment: {}", hex::encode(request.commitment.clone()));
+        info!(
+            "Received grpc request for commitment: {}",
+            hex::encode(request.commitment.clone())
+        );
         let job = Job {
             height: request.height,
             namespace: request.namespace.clone(),
@@ -70,9 +75,13 @@ impl Inclusion for InclusionService {
 
         // First check proof_tree for completed/failed proofs
         debug!("Checking proof_tree for finished/failed proofs");
-        if let Some(proof_data) = self.proof_tree.get(&job_key).map_err(|e| Status::internal(e.to_string()))? {
-            let job_status: JobStatus = bincode::deserialize(&proof_data)
-                .map_err(|e| Status::internal(e.to_string()))?;
+        if let Some(proof_data) = self
+            .proof_tree
+            .get(&job_key)
+            .map_err(|e| Status::internal(e.to_string()))?
+        {
+            let job_status: JobStatus =
+                bincode::deserialize(&proof_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
                 JobStatus::Completed(proof) => {
                     return Ok(Response::new(GetKeccakInclusionResponse {
@@ -95,40 +104,50 @@ impl Inclusion for InclusionService {
 
         // Then check queue_tree for pending proofs
         debug!("Checking queue_tree for pending proofs");
-        if let Some(queue_data) = self.queue_tree.get(&job_key).map_err(|e| Status::internal(e.to_string()))? {
-            let job_status: JobStatus = bincode::deserialize(&queue_data)
-                .map_err(|e| Status::internal(e.to_string()))?;
+        if let Some(queue_data) = self
+            .queue_tree
+            .get(&job_key)
+            .map_err(|e| Status::internal(e.to_string()))?
+        {
+            let job_status: JobStatus =
+                bincode::deserialize(&queue_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
                 JobStatus::Pending(job_id) => {
-                    return Ok(Response::new(GetKeccakInclusionResponse { 
-                        status: ResponseStatus::Waiting as i32, 
-                        response_value: Some(ResponseValue::ProofId(job_id.to_vec()))
+                    return Ok(Response::new(GetKeccakInclusionResponse {
+                        status: ResponseStatus::Waiting as i32,
+                        response_value: Some(ResponseValue::ProofId(job_id.to_vec())),
                     }));
                 }
                 JobStatus::Waiting => {
                     return Ok(Response::new(GetKeccakInclusionResponse {
                         status: ResponseStatus::Waiting as i32,
-                        response_value: None 
+                        response_value: None,
                     }));
                 }
                 _ => {
                     error!("Expected job to be pending or waiting");
-                    return Err(Status::internal("Expected job to be pending or waiting"))
-                },
+                    return Err(Status::internal("Expected job to be pending or waiting"));
+                }
             }
         }
 
         debug!("Sending job to worker and adding to queue...");
-        self.job_sender.send(job.clone()).map_err(|e| Status::internal(e.to_string()))?;
-        
+        self.job_sender
+            .send(job.clone())
+            .map_err(|e| Status::internal(e.to_string()))?;
+
         let waiting_status = JobStatus::Waiting;
-        self.queue_tree.insert(&job_key, bincode::serialize(&waiting_status).map_err(|e| Status::internal(e.to_string()))?)
+        self.queue_tree
+            .insert(
+                &job_key,
+                bincode::serialize(&waiting_status).map_err(|e| Status::internal(e.to_string()))?,
+            )
             .map_err(|e| Status::internal(e.to_string()))?;
 
         debug!("Returning waiting response...");
         Ok(Response::new(GetKeccakInclusionResponse {
             status: ResponseStatus::Waiting as i32,
-            response_value: None
+            response_value: None,
         }))
     }
 }
@@ -147,112 +166,153 @@ impl InclusionService {
     async fn job_worker(&self, mut job_receiver: mpsc::UnboundedReceiver<Job>) {
         info!("Job worker started");
         while let Some(job) = job_receiver.recv().await {
-            debug!("job worker received job for commitment: {}", hex::encode(job.commitment.clone()));
+            debug!(
+                "job worker received job for commitment: {}",
+                hex::encode(job.commitment.clone())
+            );
             let client = Arc::clone(&self.client);
             let proof_sender = self.proof_sender.clone();
-            tokio::spawn(prove(job, client, self.queue_tree.clone(), self.proof_tree.clone(), proof_sender));
+            tokio::spawn(prove(
+                job,
+                client,
+                self.queue_tree.clone(),
+                self.proof_tree.clone(),
+                proof_sender,
+            ));
         }
     }
 }
 
-async fn prove(job: Job, client: Arc<Client>, queue_tree: SledTree, proof_tree: SledTree, proof_sender: mpsc::UnboundedSender<(Job, SP1ProofWithPublicValues)>) -> Result<(), InclusionServiceError> {
-
+async fn prove(
+    job: Job,
+    client: Arc<Client>,
+    queue_tree: SledTree,
+    proof_tree: SledTree,
+    proof_sender: mpsc::UnboundedSender<(Job, SP1ProofWithPublicValues)>,
+) -> Result<(), InclusionServiceError> {
     let network_prover = ProverClient::builder().network().build();
     let (pk, vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
 
-    let from_queue_tree: Option<JobStatus> = match queue_tree.get(&bincode::serialize(&job)
-        .map_err(|e| InclusionServiceError::GeneralError(format!("Failed to serialize job: {}", e)))?)
-        .map_err(|e| InclusionServiceError::GeneralError(format!("Failed to get job from queue: {}", e)))? {
-        Some(job_status_bytes) => {
-            bincode::deserialize(&job_status_bytes)
-                .map_err(|e| InclusionServiceError::GeneralError(format!("Failed to deserialize job status: {}", e)))?
-        },
-        None => {
-            None
-        }
+    let from_queue_tree: Option<JobStatus> = match queue_tree
+        .get(&bincode::serialize(&job).map_err(|e| {
+            InclusionServiceError::GeneralError(format!("Failed to serialize job: {}", e))
+        })?)
+        .map_err(|e| {
+            InclusionServiceError::GeneralError(format!("Failed to get job from queue: {}", e))
+        })? {
+        Some(job_status_bytes) => bincode::deserialize(&job_status_bytes).map_err(|e| {
+            InclusionServiceError::GeneralError(format!("Failed to deserialize job status: {}", e))
+        })?,
+        None => None,
     };
 
-    let prover_network_job_id: Vec<u8> = if let Some(JobStatus::Pending(prover_network_job_id)) = from_queue_tree {
-        prover_network_job_id.to_vec()
-    } else {
-        debug!("Preparing request to Celestia...");
-        let height = job.height;
+    let prover_network_job_id: Vec<u8> =
+        if let Some(JobStatus::Pending(prover_network_job_id)) = from_queue_tree {
+            prover_network_job_id.to_vec()
+        } else {
+            debug!("Preparing request to Celestia...");
+            let height = job.height;
 
-        let commitment = Commitment::new(
-            job.commitment
-            .clone()
-            .try_into()
-            .map_err(|_| InclusionServiceError::InvalidParameter("Invalid commitment".to_string()))?
-        );
-        
-        let namespace = Namespace::new_v0(&job.namespace)
-            .map_err(|e| InclusionServiceError::InvalidParameter(format!("Invalid namespace: {}", e)))?;
+            let commitment = Commitment::new(job.commitment.clone().try_into().map_err(|_| {
+                InclusionServiceError::InvalidParameter("Invalid commitment".to_string())
+            })?);
 
-        debug!("Getting blob from Celestia...");
-        let blob = client.blob_get(height, namespace, commitment).await
-            .map_err(|e| {
-                error!("Failed to get blob from Celestia: {}", e);
-                InclusionServiceError::CelestiaError(e.to_string())
+            let namespace = Namespace::new_v0(&job.namespace).map_err(|e| {
+                InclusionServiceError::InvalidParameter(format!("Invalid namespace: {}", e))
             })?;
 
-        debug!("Getting header from Celestia...");
-        let header = client.header_get_by_height(height)
-            .await
-            .map_err(|e| InclusionServiceError::CelestiaError(e.to_string()))?;
+            debug!("Getting blob from Celestia...");
+            let blob = client
+                .blob_get(height, namespace, commitment)
+                .await
+                .map_err(|e| {
+                    error!("Failed to get blob from Celestia: {}", e);
+                    InclusionServiceError::CelestiaError(e.to_string())
+                })?;
 
-        debug!("Getting NMT multiproofs from Celestia...");
-        let nmt_multiproofs = client
-            .blob_get_proof(height, namespace, commitment)
-            .await
-            .map_err(|e| {
-                error!("Failed to get blob proof from Celestia: {}", e);
-                InclusionServiceError::CelestiaError(e.to_string())
-            })?;
+            debug!("Getting header from Celestia...");
+            let header = client
+                .header_get_by_height(height)
+                .await
+                .map_err(|e| InclusionServiceError::CelestiaError(e.to_string()))?;
 
-        debug!("Preparing prover network request and starting proving...");
-        let inclusion_proof_input = create_inclusion_proof_input(&blob, &header, nmt_multiproofs)
-            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
+            debug!("Getting NMT multiproofs from Celestia...");
+            let nmt_multiproofs = client
+                .blob_get_proof(height, namespace, commitment)
+                .await
+                .map_err(|e| {
+                    error!("Failed to get blob proof from Celestia: {}", e);
+                    InclusionServiceError::CelestiaError(e.to_string())
+                })?;
 
+            debug!("Preparing prover network request and starting proving...");
+            let inclusion_proof_input =
+                create_inclusion_proof_input(&blob, &header, nmt_multiproofs)
+                    .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
 
-        let mut stdin = SP1Stdin::new();
-        stdin.write(&inclusion_proof_input);
-        let request_id: [u8; 32] = network_prover
-            .prove(&pk, &stdin)
-            .groth16()
-            .request_async()
-            .await
-            .unwrap() // TODO: Handle this error
-            .into();
+            let mut stdin = SP1Stdin::new();
+            stdin.write(&inclusion_proof_input);
+            let request_id: [u8; 32] = network_prover
+                .prove(&pk, &stdin)
+                .groth16()
+                .request_async()
+                .await
+                .unwrap() // TODO: Handle this error
+                .into();
 
-        debug!("Storing job in queue_tree...");
-        // Store in queue_tree
-        let serialized_status = bincode::serialize(&JobStatus::Pending(request_id))
-            .map_err(|e| InclusionServiceError::InvalidParameter(format!("Failed to serialize job status: {}", e)))?;
+            debug!("Storing job in queue_tree...");
+            // Store in queue_tree
+            let serialized_status =
+                bincode::serialize(&JobStatus::Pending(request_id)).map_err(|e| {
+                    InclusionServiceError::InvalidParameter(format!(
+                        "Failed to serialize job status: {}",
+                        e
+                    ))
+                })?;
 
-        queue_tree.insert(&bincode::serialize(&job).map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?, serialized_status)
-            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
+            queue_tree
+                .insert(
+                    &bincode::serialize(&job)
+                        .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?,
+                    serialized_status,
+                )
+                .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
 
-        request_id.to_vec()
-    };
+            request_id.to_vec()
+        };
 
     debug!("Waiting for proof from prover network...");
-    let prover_network_job_id: [u8; 32] = prover_network_job_id
-        .try_into()
-        .map_err(|e| InclusionServiceError::GeneralError(format!("Failed to convert prover network job id to [u8; 32]")))?;
-    let proof = network_prover.wait_proof(prover_network_job_id.into(), None).await;
+    let prover_network_job_id: [u8; 32] = prover_network_job_id.try_into().map_err(|e| {
+        InclusionServiceError::GeneralError(format!(
+            "Failed to convert prover network job id to [u8; 32]"
+        ))
+    })?;
+    let proof = network_prover
+        .wait_proof(prover_network_job_id.into(), None)
+        .await;
 
     debug!("Storing proof in proof_tree...");
     let job_status = match proof {
         Ok(proof) => JobStatus::Completed(proof),
         Err(e) => JobStatus::Failed(e.to_string()),
     };
-    let serialized_status = bincode::serialize(&job_status)
-        .map_err(|e| InclusionServiceError::GeneralError(format!("Failed to serialize job status: {}", e)))?;
-    proof_tree.insert(&bincode::serialize(&job).map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?, serialized_status)
+    let serialized_status = bincode::serialize(&job_status).map_err(|e| {
+        InclusionServiceError::GeneralError(format!("Failed to serialize job status: {}", e))
+    })?;
+    proof_tree
+        .insert(
+            &bincode::serialize(&job)
+                .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?,
+            serialized_status,
+        )
         .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
 
     // Remove job from queue_tree after storing in proof_tree
-    queue_tree.remove(&bincode::serialize(&job).map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?)
+    queue_tree
+        .remove(
+            &bincode::serialize(&job)
+                .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?,
+        )
         .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
 
     Ok(())
@@ -276,8 +336,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Failed creating celestia rpc client");
 
     let (job_sender, job_receiver) = mpsc::unbounded_channel::<Job>();
-    let (proof_sender, proof_receiver) = mpsc::unbounded_channel::<(Job, SP1ProofWithPublicValues)>();
-    let inclusion_service = InclusionService{
+    let (proof_sender, proof_receiver) =
+        mpsc::unbounded_channel::<(Job, SP1ProofWithPublicValues)>();
+    let inclusion_service = InclusionService {
         client: Arc::new(client),
         queue_tree: queue_tree.clone(),
         proof_tree: proof_tree.clone(),
