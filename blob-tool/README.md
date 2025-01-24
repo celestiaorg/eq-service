@@ -13,8 +13,9 @@ This JSON can be used in [another utility](../runner-keccak-inclusion) to **test
 cargo r -- --height <integer> --namespace "hex string" --commitment "base64 string"
 
 # Known working example from the Mocha Testnet:
-# https://mocha-4.celenium.io/tx/779fde7afe95df0249410a6f19a37f9b6b645d7005add6e5a64bfa86e58bffce
-cargo r -- --height 4336630 --namespace "08e5f679bf7116cb" --commitment "IeQ21D1pTfP5ArfION2SGtxPDYUpg2trwYZ4OxsTK5k="
+# https://mocha-4.celenium.io/blob?commitment=Ok8KERqJ3my8Z/D4DX6DfUDaeoMR0iUlxOrX1YsrAg4=&hash=AAAAAAAAAAAAAAAAAAAAAAAAAMod4SoDpykQeR8=&height=4337783
+# The first commitment in https://mocha-4.celenium.io/tx/d88d60f4fb783cc24ab07688ed6f05a50e32d58823df00e2d99ffc5ad5f74b47
+cargo r -- --height 4337783 --namespace "ca1de12a03a72910791f" --commitment "Ok8KERqJ3my8Z/D4DX6DfUDaeoMR0iUlxOrX1YsrAg4="
 
 # getting blob...
 # getting nmt multiproofs...

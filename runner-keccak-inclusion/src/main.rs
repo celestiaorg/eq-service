@@ -19,4 +19,6 @@ fn main() {
         .execute(KECCAK_INCLUSION_ELF, &stdin)
         .run()
         .expect("Failed executing program");
+
+    print!("✅ Proof seems OK! Execution completed without issue.\n")
 }

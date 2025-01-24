@@ -31,7 +31,8 @@ async fn main() {
         .expect("Failed getting header");
 
     let commitment = Commitment::new(
-        base64::engine::general_purpose::STANDARD.decode(&args.commitment)
+        base64::engine::general_purpose::STANDARD
+            .decode(&args.commitment)
             .expect("Invalid commitment base64")
             .try_into()
             .expect("Invalid commitment length"),
