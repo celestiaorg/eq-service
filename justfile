@@ -44,6 +44,13 @@ _pre-run:
         exit 1
     fi
 
+local-mocha-node:
+    #!/usr/bin/env bash
+    source .env
+    export CELESTIA_NODE_AUTH_TOKEN=$(celestia light auth admin --p2p.network mocha)
+    echo -e "JWT for Light Node:\n$CELESTIA_NODE_AUTH_TOKEN"
+    # celestia light start --p2p.network mocha --core.ip rpc-mocha.pops.one
+
 run *FLAGS: _pre-run build
     #!/usr/bin/env bash
     source .env

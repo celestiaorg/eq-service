@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+eq-common = {path = "../common"}
 celestia-rpc = {workspace = true}
 celestia-types = {workspace = true}
 tokio = {workspace = true}
 hex = {workspace = true}
-eq-common = {path = "../common"}
+base64 = {workspace = true}
 serde_json = {workspace = true}
 clap = { version = "4.5", features = ["derive"] }

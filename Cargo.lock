@@ -886,6 +886,7 @@ dependencies = [
 name = "blob-tool"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "celestia-rpc",
  "celestia-types",
  "clap",

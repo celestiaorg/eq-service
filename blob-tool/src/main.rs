@@ -1,3 +1,4 @@
+use base64::Engine;
 use celestia_rpc::{BlobClient, Client, HeaderClient};
 use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
@@ -30,8 +31,8 @@ async fn main() {
         .expect("Failed getting header");
 
     let commitment = Commitment::new(
-        hex::decode(&args.commitment)
-            .expect("Invalid commitment hex")
+        base64::engine::general_purpose::STANDARD.decode(&args.commitment)
+            .expect("Invalid commitment base64")
             .try_into()
             .expect("Invalid commitment length"),
     );
