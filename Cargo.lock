@@ -1884,6 +1884,7 @@ dependencies = [
  "env_logger",
  "eq-common",
  "hex",
+ "jsonrpsee",
  "log",
  "prost",
  "serde",

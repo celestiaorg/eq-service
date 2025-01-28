@@ -17,6 +17,7 @@ sp1-sdk = {workspace=true}
 env_logger = {workspace=true}
 log = {workspace=true}
 hex = {workspace=true}
+jsonrpsee = {workspace=true}
 
 [build-dependencies]
 tonic-build = {workspace = true}
