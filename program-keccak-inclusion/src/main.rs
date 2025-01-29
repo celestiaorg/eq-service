@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
 sp1_zkvm::entrypoint!(main);
+use alloy::{primitives::B256, primitives::U256, sol, sol_types::SolType};
 use celestia_types::{
     blob::Blob,
     nmt::{MerkleHash, NamespacedHashExt},
@@ -11,7 +12,6 @@ use nmt_rs::TmSha2Hasher;
 use sha3::{Digest, Keccak256};
 use tendermint::Hash as TmHash;
 use tendermint_proto::Protobuf;
-use alloy::{primitives::B256, primitives::U256, sol, sol_types::SolType};
 
 pub fn main() {
     println!("cycle-tracker-start: deserializing inputs");
@@ -75,7 +75,9 @@ pub fn main() {
     println!("cycle-tracker-end: verifying keccak hash inclusion");
 
     let data_root_bytes: [u8; 32] = data_root.as_bytes().try_into().unwrap();
-    let output: Vec<u8> = KeccakInclusionToDataRootProofOutput::abi_encode(&(B256::from(hash), B256::from(data_root_bytes)));
+    let output: Vec<u8> = KeccakInclusionToDataRootProofOutput::abi_encode(&(
+        B256::from(hash),
+        B256::from(data_root_bytes),
+    ));
     sp1_zkvm::io::commit_slice(&output);
-
 }

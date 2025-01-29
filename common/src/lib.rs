@@ -1,3 +1,4 @@
+use alloy::sol;
 use celestia_types::{
     blob::Blob,
     nmt::{Namespace, NamespaceProof, NamespacedHashExt},
@@ -19,7 +20,6 @@ use tendermint_proto::{
     v0_37::{types::BlockId as RawBlockId, version::Consensus as RawConsensusVersion},
     Protobuf,
 };
-use alloy::sol;
 
 mod error;
 pub use error::InclusionServiceError;

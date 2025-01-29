@@ -1916,6 +1916,7 @@ dependencies = [
  "sp1-sdk",
  "tokio",
  "tonic",
+ "tonic-build",
 ]
 
 [[package]]

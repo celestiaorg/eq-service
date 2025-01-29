@@ -196,7 +196,8 @@ impl Inclusion for InclusionServiceArc {
         }
 
         debug!("Sending job to worker and adding to queue...");
-        self.queue_db
+        self.0
+            .queue_db
             .insert(
                 &job_key,
                 bincode::serialize(&JobStatus::DataAvalibilityPending)
@@ -204,7 +205,8 @@ impl Inclusion for InclusionServiceArc {
             )
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        self.job_sender
+        self.0
+            .job_sender
             .send(job.clone())
             .map_err(|e| Status::internal(e.to_string()))?;
 
@@ -507,7 +509,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = service_socket.parse()?;
 
     Server::builder()
-        .add_service(InclusionServer::new(InclusionServiceArc(Arc::clone(&inclusion_service))))
+        .add_service(InclusionServer::new(InclusionServiceArc(Arc::clone(
+            &inclusion_service,
+        ))))
         .serve(addr)
         .await?;
 
