@@ -52,19 +52,24 @@ impl std::fmt::Debug for Job {
     }
 }
 
+/// Used as a [Job] state machine for the eq-service.
 #[derive(Serialize, Deserialize)]
 pub enum JobStatus {
-    // Before it goes to Prover Network, it might be hanging on Celestia
+    /// DA inclusion proof data is being awaited
     DataAvalibilityPending,
-    // Before it goes to Prover Network, it might be hanging on Celestia
+    /// DA inclusion is processed and ready to send to the ZK prover
     DataAvalibile(KeccakInclusionToDataRootProofInput),
-    // The Succinct Network job ID
+    /// A ZK prover job is ready to run
     ZkProofPending(SuccNetJobId),
+    /// A ZK proof is ready, and the [Job] is complete
     // For now we'll use the SP1ProofWithPublicValues as the proof
     // Ideally we only want the public values + whatever is needed to verify the proof
     // They don't seem to provide a type for that.
     ZkProofFinished(SP1ProofWithPublicValues),
-    Failed(InclusionServiceError),
+    /// A wrapper for any [InclusionServiceError], with:
+    /// - Option = None               -> No rety is possilbe (Perminent failure)
+    /// - Option = Some(prior_status) -> Rety is possilbe, the last state is cached to use
+    Failed(InclusionServiceError, Option<Box<JobStatus>>),
 }
 
 impl std::fmt::Debug for JobStatus {
@@ -74,7 +79,7 @@ impl std::fmt::Debug for JobStatus {
             JobStatus::DataAvalibile(_) => write!(f, "DataAvalibile"),
             JobStatus::ZkProofPending(_) => write!(f, "ZkProofPending"),
             JobStatus::ZkProofFinished(_) => write!(f, "ZkProofFinished"),
-            JobStatus::Failed(_) => write!(f, "Failed"),
+            JobStatus::Failed(_, _) => write!(f, "Failed"),
         }
     }
 }
@@ -126,10 +131,18 @@ impl Inclusion for InclusionService {
                         )),
                     }));
                 }
-                JobStatus::Failed(error) => {
+                JobStatus::Failed(error, None) => {
                     return Ok(Response::new(GetKeccakInclusionResponse {
                         status: ResponseStatus::Failed as i32,
                         response_value: Some(ResponseValue::ErrorMessage(format!("{error:?}"))),
+                    }));
+                }
+                JobStatus::Failed(error, retry_status) => {
+                    return Ok(Response::new(GetKeccakInclusionResponse {
+                        status: ResponseStatus::Waiting as i32,
+                        response_value: Some(ResponseValue::StatusMessage(format!(
+                            "Retyring: {retry_status:?} ||| Previous Error: {error:?}"
+                        ))),
                     }));
                 }
                 _ => {
@@ -248,7 +261,7 @@ impl InclusionService {
                             }
                             Err(e) => {
                                 error!("{job:?} failed progressing DataAvalibilityPending: {e}");
-                                job_status = JobStatus::Failed(e);
+                                job_status = JobStatus::Failed(e, None);
                                 self.finalize_job(job_key, job_status)?;
                             }
                         };
@@ -266,7 +279,7 @@ impl InclusionService {
                             }
                             Err(e) => {
                                 error!("{job:?} failed progressing DataAvalibile: {e}");
-                                job_status = JobStatus::Failed(e);
+                                job_status = JobStatus::Failed(e, None);
                                 self.finalize_job(job_key, job_status)?;
                             }
                         };
@@ -284,13 +297,13 @@ impl InclusionService {
                             }
                             Err(e) => {
                                 error!("{job:?} failed progressing ZkProofPending: {e}");
-                                job_status = JobStatus::Failed(e);
+                                job_status = JobStatus::Failed(e, None);
                                 self.finalize_job(job_key, job_status)?;
                             }
                         }
                     }
                     JobStatus::ZkProofFinished(_) => (),
-                    JobStatus::Failed(_) => {
+                    JobStatus::Failed(_, _) => {
                         // TODO: "Need to impl some way to retry some failures, and report perminent failures here"
                         ()
                     }
