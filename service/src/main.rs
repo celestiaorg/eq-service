@@ -12,6 +12,7 @@ use eq_common::eqs::{
 
 use celestia_rpc::{BlobClient, Client, HeaderClient};
 use celestia_types::blob::Commitment;
+use celestia_types::block::Height as BlockHeight;
 use celestia_types::nmt::Namespace;
 use sp1_sdk::{Prover, ProverClient, SP1ProofWithPublicValues, SP1Stdin};
 use tokio::sync::mpsc;
@@ -23,7 +24,7 @@ use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree as SledTree};
 
-use base64::{self, Engine};
+use base64::Engine;
 
 const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
     "../../target/elf-compilation/riscv32im-succinct-zkvm-elf/release/eq-program-keccak-inclusion"
@@ -32,17 +33,17 @@ type SuccNetJobId = [u8; 32];
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Job {
-    pub height: u64,
-    pub namespace: Vec<u8>,
-    pub commitment: Vec<u8>,
+    pub height: BlockHeight,
+    pub namespace: Namespace,
+    pub commitment: Commitment,
 }
 
 impl std::fmt::Debug for Job {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let namespace_serialized =
-            base64::engine::general_purpose::STANDARD.encode(&self.namespace);
+            base64::engine::general_purpose::STANDARD.encode(&self.namespace.as_bytes());
         let commitment_serialized =
-            base64::engine::general_purpose::STANDARD.encode(&self.commitment);
+            base64::engine::general_purpose::STANDARD.encode(&self.commitment.hash());
         f.debug_struct("Job")
             .field("height", &self.height)
             .field("namespace", &namespace_serialized)
@@ -101,14 +102,21 @@ impl Inclusion for InclusionServiceArc {
     ) -> Result<Response<GetKeccakInclusionResponse>, Status> {
         let request = request.into_inner();
         let job = Job {
-            height: request.height,
-            namespace: request.namespace.clone(),
-            commitment: request.commitment.clone(),
-        };
-        info!("Received grpc request for: {job:?}");
+            height: request
+                .height
+                .try_into()
+                .map_err(|_| Status::invalid_argument("Block Height must be u64"))?,
 
-        // TODO FIXME: before we hit any job, we need to check encoding! some use hex and some use base64.
-        // MUST reply error to user w/ tip to use correct encoding
+            // TODO: should we have some handling of versions here?
+            namespace: Namespace::new_v0(&request.namespace).map_err(|_| {
+                Status::invalid_argument("Namespace v0 expected! Must be 32 bytes, check encoding")
+            })?,
+            commitment: Commitment::new(request.commitment.try_into().map_err(|_| {
+                Status::invalid_argument("Commitment must be 32 bytes, check encoding")
+            })?),
+        };
+
+        info!("Received grpc request for: {job:?}");
 
         let job_key = bincode::serialize(&job).map_err(|e| Status::internal(e.to_string()))?;
 
@@ -243,7 +251,10 @@ impl InclusionService {
                 debug!("Job worker processing with starting status: {job_status:?}");
                 match job_status {
                     JobStatus::DataAvalibilityPending => {
-                        match get_zk_proof_input_from_da(&job, self.da_client.clone()).await {
+                        match self
+                            .get_zk_proof_input_from_da(&job, self.da_client.clone())
+                            .await
+                        {
                             Ok(proof_input) => {
                                 job_status = JobStatus::DataAvalibile(proof_input);
                                 self.send_job_with_new_status(
@@ -261,7 +272,7 @@ impl InclusionService {
                         };
                     }
                     JobStatus::DataAvalibile(proof_input) => {
-                        match request_zk_proof(proof_input).await {
+                        match self.request_zk_proof(proof_input).await {
                             Ok(zk_job_id) => {
                                 job_status = JobStatus::ZkProofPending(zk_job_id);
                                 self.send_job_with_new_status(
@@ -279,7 +290,7 @@ impl InclusionService {
                         };
                     }
                     JobStatus::ZkProofPending(zk_job_id) => {
-                        match wait_for_zk_proof(zk_job_id).await {
+                        match self.wait_for_zk_proof(zk_job_id).await {
                             Ok(zk_proof) => {
                                 job_status = JobStatus::ZkProofFinished(zk_proof);
                                 self.finalize_job(job_key, job_status)?;
@@ -300,6 +311,67 @@ impl InclusionService {
             }
         }
         unreachable!("Workers must have exhaustive status matching to handle jobs!")
+    }
+
+    /// Connect to the Cestia [Client] and attempt to get a NMP for a [Job].
+    /// A successful Result indicates that the queue DB contains valid ZKP input
+    async fn get_zk_proof_input_from_da(
+        &self,
+        job: &Job,
+        client: Arc<Client>,
+    ) -> Result<KeccakInclusionToDataRootProofInput, InclusionServiceError> {
+        debug!("Preparing request to Celestia...");
+        let height = job.height;
+
+        debug!("Getting blob from Celestia...");
+        let try_blob = client
+            .blob_get(job.height.into(), job.namespace, job.commitment)
+            .await;
+        let blob = try_blob.map_err(|e: ClientError| {
+            error!("Celestia Client error: {e}");
+            match e {
+                ClientError::Call(error_object) => {
+                    // TODO: make this handle errors much better!  See ErrorCode::ServerError(1){
+                    if error_object.message() == "header: not found" {
+                        error!("Hit recoverable Celestia error");
+                        return InclusionServiceError::CelestiaError("header not found. Likely Celestia Node is missing blob, although it exists on the network overall.".to_string());
+                    };
+                    if error_object.message() == "blob: not found" {
+                        error!("Hit permanent Celestia error");
+                        return InclusionServiceError::CelestiaError("blob: not found. Likely the blob doesn't exist in the chain".to_string());
+                    };
+
+                    InclusionServiceError::CelestiaError("UNKNOWN client error!".to_string())
+                }
+                // TODO: handle other Celestia JSON RPC errors
+                _ => InclusionServiceError::CelestiaError("Unhandled Celestia SDK error".to_string()),
+            }
+        })?;
+
+        debug!("Getting header from Celestia...");
+        let header = client
+            .header_get_by_height(height.into())
+            .await
+            .map_err(|e| InclusionServiceError::CelestiaError(e.to_string()))?;
+
+        debug!("Getting NMT multiproofs from Celestia...");
+        let nmt_multiproofs = client
+            .blob_get_proof(job.height.into(), job.namespace, job.commitment)
+            .await
+            .map_err(|e| {
+                error!("Failed to get blob proof from Celestia: {}", e);
+                InclusionServiceError::CelestiaError(e.to_string())
+            })?;
+
+        debug!("Creating ZK Proof input from Celestia Data...");
+        if let Ok(proof_input) = create_inclusion_proof_input(&blob, &header, nmt_multiproofs) {
+            return Ok(proof_input);
+        }
+
+        error!("Failed to get proof from Celestia - This should be unrechable!");
+        Err(InclusionServiceError::CelestiaError(format!(
+            "Could not obtain NMT proof of data inclusion"
+        )))
     }
 
     /// Atomically move a job from the database queue tree to the proof tree.
@@ -345,101 +417,42 @@ impl InclusionService {
             .send(job)
             .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?)
     }
-}
 
-/// Connect to the Cestia [Client] and attempt to get a NMP for a [Job].
-/// A successful Result indicates that the queue DB contains valid ZKP input
-async fn get_zk_proof_input_from_da(
-    job: &Job,
-    client: Arc<Client>,
-) -> Result<KeccakInclusionToDataRootProofInput, InclusionServiceError> {
-    debug!("Preparing request to Celestia...");
-    let height = job.height;
+    async fn request_zk_proof(
+        &self,
+        proof_input: KeccakInclusionToDataRootProofInput,
+    ) -> Result<SuccNetJobId, InclusionServiceError> {
+        let network_prover = ProverClient::builder().network().build();
+        let (pk, _vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
 
-    let commitment =
-        Commitment::new(job.commitment.clone().try_into().map_err(|_| {
-            InclusionServiceError::InvalidParameter("Invalid commitment".to_string())
-        })?);
+        debug!("Preparing prover network request and starting proving...");
+        let mut stdin = SP1Stdin::new();
+        stdin.write(&proof_input);
+        let request_id: SuccNetJobId = network_prover
+            .prove(&pk, &stdin)
+            .groth16()
+            .request_async()
+            .await
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?
+            .into();
 
-    let namespace = Namespace::new_v0(&job.namespace).map_err(|e| {
-        InclusionServiceError::InvalidParameter(format!("Invalid namespace: {}", e))
-    })?;
-
-    debug!("Getting blob from Celestia...");
-    let try_blob = client.blob_get(height, namespace, commitment).await;
-    let blob = try_blob
-        .inspect_err(|e: &ClientError| {
-            match e {
-                ClientError::Call(error_object) => {
-                    // TODO: make this handle errors much better!  See ErrorCode::ServerError(1){
-                    if error_object.message() == "header: not found" {
-                        error!("TODO recover Celestia error");
-                    };
-                }
-                // TODO: handle other Celestia JSON RPC errors
-                _ => (),
-            }
-        })
-        .map_err(|e| InclusionServiceError::CelestiaError(e.to_string()))?;
-
-    debug!("Getting header from Celestia...");
-    let header = client
-        .header_get_by_height(height)
-        .await
-        .map_err(|e| InclusionServiceError::CelestiaError(e.to_string()))?;
-
-    debug!("Getting NMT multiproofs from Celestia...");
-    let nmt_multiproofs = client
-        .blob_get_proof(height, namespace, commitment)
-        .await
-        .map_err(|e| {
-            error!("Failed to get blob proof from Celestia: {}", e);
-            InclusionServiceError::CelestiaError(e.to_string())
-        })?;
-
-    debug!("Creating ZK Proof input from Celestia Data...");
-    if let Ok(proof_input) = create_inclusion_proof_input(&blob, &header, nmt_multiproofs) {
-        return Ok(proof_input);
+        Ok(request_id)
     }
 
-    error!("Failed to get proof from Celestia - This should be unrechable!");
-    Err(InclusionServiceError::CelestiaError(format!(
-        "Could not obtain NMT proof of data inclusion"
-    )))
-}
+    async fn wait_for_zk_proof(
+        &self,
+        request_id: SuccNetJobId,
+    ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
+        // TODO: can the service hold a single instance of a prover client?
+        let network_prover = ProverClient::builder().network().build();
+        let _ = network_prover.setup(KECCAK_INCLUSION_ELF);
 
-async fn request_zk_proof(
-    proof_input: KeccakInclusionToDataRootProofInput,
-) -> Result<SuccNetJobId, InclusionServiceError> {
-    let network_prover = ProverClient::builder().network().build();
-    let (pk, _vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
-
-    debug!("Preparing prover network request and starting proving...");
-    let mut stdin = SP1Stdin::new();
-    stdin.write(&proof_input);
-    let request_id: SuccNetJobId = network_prover
-        .prove(&pk, &stdin)
-        .groth16()
-        .request_async()
-        .await
-        .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?
-        .into();
-
-    Ok(request_id)
-}
-
-async fn wait_for_zk_proof(
-    request_id: SuccNetJobId,
-) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
-    // TODO: can the service hold a single instance of a prover client?
-    let network_prover = ProverClient::builder().network().build();
-    let _ = network_prover.setup(KECCAK_INCLUSION_ELF);
-
-    debug!("Waiting for proof from prover network...");
-    network_prover
-        .wait_proof(request_id.into(), None)
-        .await
-        .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))
+        debug!("Waiting for proof from prover network...");
+        network_prover
+            .wait_proof(request_id.into(), None)
+            .await
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))
+    }
 }
 
 #[tokio::main]
