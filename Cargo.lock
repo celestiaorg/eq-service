@@ -56,6 +56,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "alloy"
+version = "0.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbcc41e8a11a4975b18ec6afba2cc48d591fa63336a4c526dacb50479a8d6b35"
+dependencies = [
+ "alloy-core",
+]
+
+[[package]]
 name = "alloy-consensus"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -84,6 +93,16 @@ dependencies = [
  "alloy-rlp",
  "alloy-serde",
  "serde",
+]
+
+[[package]]
+name = "alloy-core"
+version = "0.8.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "648275bb59110f88cc5fa9a176845e52a554ebfebac2d21220bcda8c9220f797"
+dependencies = [
+ "alloy-primitives",
+ "alloy-sol-types",
 ]
 
 [[package]]
@@ -1852,19 +1871,24 @@ dependencies = [
 name = "eq-common"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "celestia-types",
  "nmt-rs",
+ "prost",
  "serde",
  "sha3",
  "tendermint",
  "tendermint-proto",
  "thiserror 2.0.11",
+ "tonic",
+ "tonic-build",
 ]
 
 [[package]]
 name = "eq-program-keccak-inclusion"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "celestia-types",
  "eq-common",
  "nmt-rs",
@@ -1875,7 +1899,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "eq-service"
+name = "eq_service"
 version = "0.1.0"
 dependencies = [
  "base64",
@@ -1892,7 +1916,6 @@ dependencies = [
  "sp1-sdk",
  "tokio",
  "tonic",
- "tonic-build",
 ]
 
 [[package]]

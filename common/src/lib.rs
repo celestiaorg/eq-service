@@ -19,6 +19,7 @@ use tendermint_proto::{
     v0_37::{types::BlockId as RawBlockId, version::Consensus as RawConsensusVersion},
     Protobuf,
 };
+use alloy::sol;
 
 mod error;
 pub use error::InclusionServiceError;
@@ -43,11 +44,19 @@ pub struct KeccakInclusionToDataRootProofInput {
     pub keccak_hash: [u8; 32],
 }
 
-#[derive(Serialize, Deserialize)]
+/*#[derive(Serialize, Deserialize)]
 pub struct KeccakInclusionToDataRootProofOutput {
     pub keccak_hash: [u8; 32],
     pub data_root: Vec<u8>,
+}*/
+
+pub mod eqs {
+    include!("generated/eqs.rs");
 }
+
+pub type KeccakInclusionToDataRootProofOutput = sol! {
+    tuple(bytes32, bytes32)
+};
 
 pub fn create_inclusion_proof_input(
     blob: &Blob,

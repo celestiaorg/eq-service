@@ -4,11 +4,8 @@ use jsonrpsee::core::ClientError;
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
 
-pub mod eqs {
-    include!("generated/eqs.rs");
-}
-use eqs::inclusion_server::{Inclusion, InclusionServer};
-use eqs::{
+use eq_common::eqs::inclusion_server::{Inclusion, InclusionServer};
+use eq_common::eqs::{
     get_keccak_inclusion_response::{ResponseValue, Status as ResponseStatus},
     GetKeccakInclusionRequest, GetKeccakInclusionResponse,
 };
@@ -93,8 +90,11 @@ pub struct InclusionService {
     proof_db: SledTree,
 }
 
+// I hate this workaround. Kill it with fire.
+pub struct InclusionServiceArc(Arc<InclusionService>);
+
 #[tonic::async_trait]
-impl Inclusion for InclusionService {
+impl Inclusion for InclusionServiceArc {
     async fn get_keccak_inclusion(
         &self,
         request: Request<GetKeccakInclusionRequest>,
@@ -115,6 +115,7 @@ impl Inclusion for InclusionService {
         // First check proof_tree for completed/failed proofs
         debug!("Checking for job status in finalized proof_tree");
         if let Some(proof_data) = self
+            .0
             .proof_db
             .get(&job_key)
             .map_err(|e| Status::internal(e.to_string()))?
@@ -156,6 +157,7 @@ impl Inclusion for InclusionService {
         // Then check queue_tree for pending proofs
         debug!("Checking job status for pending queue_tree");
         if let Some(queue_data) = self
+            .0
             .queue_db
             .get(&job_key)
             .map_err(|e| Status::internal(e.to_string()))?
@@ -213,16 +215,6 @@ impl Inclusion for InclusionService {
                 "sent to proof worker".to_string(),
             )),
         }))
-    }
-}
-
-#[tonic::async_trait]
-impl Inclusion for Arc<InclusionService> {
-    async fn get_keccak_inclusion(
-        &self,
-        request: Request<GetKeccakInclusionRequest>,
-    ) -> Result<Response<GetKeccakInclusionResponse>, Status> {
-        (**self).get_keccak_inclusion(request).await
     }
 }
 
@@ -515,7 +507,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = service_socket.parse()?;
 
     Server::builder()
-        .add_service(InclusionServer::new(Arc::clone(&inclusion_service)))
+        .add_service(InclusionServer::new(InclusionServiceArc(Arc::clone(&inclusion_service))))
         .serve(addr)
         .await?;
 
