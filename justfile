@@ -74,3 +74,7 @@ clean:
 fmt:
     @cargo fmt
     @just --quiet --unstable --fmt > /dev/null
+
+doc:
+    RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --no-deps --workspace
+    xdg-open {{ justfile_directory() }}/target/doc/index.html

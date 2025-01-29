@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+
 use jsonrpsee::core::ClientError;
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
@@ -68,7 +70,7 @@ pub enum JobStatus {
     ZkProofFinished(SP1ProofWithPublicValues),
     /// A wrapper for any [InclusionServiceError], with:
     /// - Option = None               -> No rety is possilbe (Perminent failure)
-    /// - Option = Some(prior_status) -> Rety is possilbe, the last state is cached to use
+    /// - Option = Some(\<retry-able status\>) -> Retry is possilbe, with a JobStatus state to retry with
     Failed(InclusionServiceError, Option<Box<JobStatus>>),
 }
 
@@ -85,9 +87,7 @@ impl std::fmt::Debug for JobStatus {
 }
 
 pub struct InclusionService {
-    /// Data avaliblity client handle
     da_client: Arc<Client>,
-    /// Channel
     job_sender: mpsc::UnboundedSender<Job>,
     queue_db: SledTree,
     proof_db: SledTree,
@@ -334,7 +334,7 @@ impl InclusionService {
     }
 
     /// Insert a [JobStatus] into a [SledTree] database
-    /// **AND** `send()` this job back to the `self.job_sender` to schedule more progress.
+    /// AND `send()` this job back to the `self.job_sender` to schedule more progress.
     /// You likely want to pass `self.some_sled_tree` into `data_base` as input.
     fn send_job_with_new_status(
         &self,
@@ -358,7 +358,7 @@ impl InclusionService {
     }
 }
 
-/// Connect to the Cestia [`Client`] and attempt to get a NMP for a [`Job`].
+/// Connect to the Cestia [Client] and attempt to get a NMP for a [Job].
 /// A successful Result indicates that the queue DB contains valid ZKP input
 async fn get_zk_proof_input_from_da(
     job: &Job,

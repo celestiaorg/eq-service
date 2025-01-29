@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use base64::Engine;
 use celestia_rpc::{BlobClient, Client, HeaderClient};
 use celestia_types::blob::Commitment;

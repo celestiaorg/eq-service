@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use eq_common::KeccakInclusionToDataRootProofInput;
 use sp1_sdk::{ProverClient, SP1Stdin};
 use std::fs;
