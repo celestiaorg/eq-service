@@ -1,5 +1,4 @@
 #![doc = include_str!("../README.md")]
-
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 use celestia_types::{

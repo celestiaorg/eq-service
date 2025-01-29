@@ -288,12 +288,7 @@ impl InclusionService {
                         match wait_for_zk_proof(zk_job_id).await {
                             Ok(zk_proof) => {
                                 job_status = JobStatus::ZkProofFinished(zk_proof);
-                                self.send_job_with_new_status(
-                                    &self.queue_db,
-                                    job_key,
-                                    job_status,
-                                    job,
-                                )?;
+                                self.finalize_job(job_key, job_status)?;
                             }
                             Err(e) => {
                                 error!("{job:?} failed progressing ZkProofPending: {e}");
@@ -384,17 +379,14 @@ async fn get_zk_proof_input_from_da(
                 ClientError::Call(error_object) => {
                     // TODO: make this handle errors much better!  See ErrorCode::ServerError(1){
                     if error_object.message() == "header: not found" {
-                        todo!();
+                        error!("TODO recover Celestia error");
                     };
                 }
                 // TODO: handle other Celestia JSON RPC errors
                 _ => (),
             }
         })
-        .map_err(|e| {
-            error!("Failed to get blob from Celestia: {}", e);
-            InclusionServiceError::CelestiaError(e.to_string())
-        })?;
+        .map_err(|e| InclusionServiceError::CelestiaError(e.to_string()))?;
 
     debug!("Getting header from Celestia...");
     let header = client
