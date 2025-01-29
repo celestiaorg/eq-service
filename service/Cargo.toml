@@ -16,7 +16,7 @@ sled = {workspace = true}
 sp1-sdk = {workspace=true}
 env_logger = {workspace=true}
 log = {workspace=true}
-hex = {workspace=true}
+base64 = {workspace = true}
 jsonrpsee = {workspace=true}
 
 [build-dependencies]

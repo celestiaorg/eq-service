@@ -24,6 +24,8 @@ use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree as SledTree};
 
+use base64::{self, Engine};
+
 const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
     "../../target/elf-compilation/riscv32im-succinct-zkvm-elf/release/eq-program-keccak-inclusion"
 );
@@ -34,6 +36,20 @@ pub struct Job {
     pub height: u64,
     pub namespace: Vec<u8>,
     pub commitment: Vec<u8>,
+}
+
+impl std::fmt::Debug for Job {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let namespace_serialized =
+            base64::engine::general_purpose::STANDARD.encode(&self.namespace);
+        let commitment_serialized =
+            base64::engine::general_purpose::STANDARD.encode(&self.commitment);
+        f.debug_struct("Job")
+            .field("height", &self.height)
+            .field("namespace", &namespace_serialized)
+            .field("commitment", &commitment_serialized)
+            .finish()
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -50,6 +66,19 @@ pub enum JobStatus {
     ZkProofFinished(SP1ProofWithPublicValues),
     Failed(InclusionServiceError),
 }
+
+impl std::fmt::Debug for JobStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JobStatus::DataAvalibilityPending => write!(f, "DataAvalibilityPending"),
+            JobStatus::DataAvalibile(_) => write!(f, "DataAvalibile"),
+            JobStatus::ZkProofPending(_) => write!(f, "ZkProofPending"),
+            JobStatus::ZkProofFinished(_) => write!(f, "ZkProofFinished"),
+            JobStatus::Failed(_) => write!(f, "Failed"),
+        }
+    }
+}
+
 pub struct InclusionService {
     /// Data avaliblity client handle
     da_client: Arc<Client>,
@@ -66,19 +95,20 @@ impl Inclusion for InclusionService {
         request: Request<GetKeccakInclusionRequest>,
     ) -> Result<Response<GetKeccakInclusionResponse>, Status> {
         let request = request.into_inner();
-        info!(
-            "Received grpc request for commitment: {}",
-            hex::encode(request.commitment.clone())
-        );
         let job = Job {
             height: request.height,
             namespace: request.namespace.clone(),
             commitment: request.commitment.clone(),
         };
+        info!("Received grpc request for: {job:?}");
+
+        // TODO FIXME: before we hit any job, we need to check encoding! some use hex and some use base64.
+        // MUST reply error to user w/ tip to use correct encoding
+
         let job_key = bincode::serialize(&job).map_err(|e| Status::internal(e.to_string()))?;
 
         // First check proof_tree for completed/failed proofs
-        debug!("Checking proof_tree for finished/failed proofs");
+        debug!("Checking for job status in finalized proof_tree");
         if let Some(proof_data) = self
             .proof_db
             .get(&job_key)
@@ -111,7 +141,7 @@ impl Inclusion for InclusionService {
         }
 
         // Then check queue_tree for pending proofs
-        debug!("Checking queue_tree for pending proofs");
+        debug!("Checking job status for pending queue_tree");
         if let Some(queue_data) = self
             .queue_db
             .get(&job_key)
@@ -194,51 +224,70 @@ impl InclusionService {
     async fn job_worker(
         &self,
         mut job_receiver: mpsc::UnboundedReceiver<Job>,
-    ) -> Result<Option<JobStatus>, InclusionServiceError> {
+    ) -> Result<(), InclusionServiceError> {
         debug!("Job worker started");
         while let Some(job) = job_receiver.recv().await {
-            debug!(
-                "job worker received job for commitment: {}",
-                hex::encode(job.commitment.clone())
-            );
+            debug!("Job worker received {job:?}",);
 
             let job_key = bincode::serialize(&job).unwrap();
 
             if let Some(queue_data) = self.queue_db.get(&job_key).unwrap() {
-                let job_status: JobStatus = bincode::deserialize(&queue_data).unwrap();
+                let mut job_status: JobStatus = bincode::deserialize(&queue_data).unwrap();
+                debug!("Job worker processing with starting status: {job_status:?}");
                 match job_status {
                     JobStatus::DataAvalibilityPending => {
-                        let client = Arc::clone(&self.da_client);
-                        let proof_input = get_zk_proof_input_from_da(&job, client).await?;
-                        let job_status = JobStatus::DataAvalibile(proof_input);
-
-                        self.insert_job_status_to_queue(job_key, job_status, job)?;
+                        match get_zk_proof_input_from_da(&job, self.da_client.clone()).await {
+                            Ok(proof_input) => {
+                                job_status = JobStatus::DataAvalibile(proof_input);
+                                self.send_job_with_new_status(
+                                    &self.queue_db,
+                                    job_key,
+                                    job_status,
+                                    job,
+                                )?;
+                            }
+                            Err(e) => {
+                                error!("{job:?} failed progressing DataAvalibilityPending: {e}");
+                                job_status = JobStatus::Failed(e);
+                                self.finalize_job(job_key, job_status)?;
+                            }
+                        };
                     }
                     JobStatus::DataAvalibile(proof_input) => {
-                        let zk_job_id: SuccNetJobId = request_zk_proof(proof_input).await?;
-                        let job_status = JobStatus::ZkProofPending(zk_job_id);
-
-                        self.insert_job_status_to_queue(job_key, job_status, job)?;
+                        match request_zk_proof(proof_input).await {
+                            Ok(zk_job_id) => {
+                                job_status = JobStatus::ZkProofPending(zk_job_id);
+                                self.send_job_with_new_status(
+                                    &self.queue_db,
+                                    job_key,
+                                    job_status,
+                                    job,
+                                )?;
+                            }
+                            Err(e) => {
+                                error!("{job:?} failed progressing DataAvalibile: {e}");
+                                job_status = JobStatus::Failed(e);
+                                self.finalize_job(job_key, job_status)?;
+                            }
+                        };
                     }
                     JobStatus::ZkProofPending(zk_job_id) => {
-                        let zk_proof = wait_for_zk_proof(zk_job_id).await?;
-                        let job_status = JobStatus::ZkProofFinished(zk_proof);
-
-                        (&self.queue_db, &self.proof_db)
-                            .transaction(|(queue_tx, proof_tx)| {
-                                queue_tx.remove(job_key.clone())?.unwrap();
-                                proof_tx.insert(
-                                    job_key.clone(),
-                                    bincode::serialize(&job_status).unwrap(),
+                        match wait_for_zk_proof(zk_job_id).await {
+                            Ok(zk_proof) => {
+                                job_status = JobStatus::ZkProofFinished(zk_proof);
+                                self.send_job_with_new_status(
+                                    &self.queue_db,
+                                    job_key,
+                                    job_status,
+                                    job,
                                 )?;
-                                Ok::<
-                                    (),
-                                    sled::transaction::ConflictableTransactionError<
-                                        InclusionServiceError,
-                                    >,
-                                >(())
-                            })
-                            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
+                            }
+                            Err(e) => {
+                                error!("{job:?} failed progressing ZkProofPending: {e}");
+                                job_status = JobStatus::Failed(e);
+                                self.finalize_job(job_key, job_status)?;
+                            }
+                        }
                     }
                     JobStatus::ZkProofFinished(_) => (),
                     JobStatus::Failed(_) => {
@@ -248,19 +297,44 @@ impl InclusionService {
                 }
             }
         }
-        Ok(None)
+        unreachable!("Workers must have exhaustive status matching to handle jobs!")
     }
 
-    fn insert_job_status_to_queue(
+    /// Atomically move a job from the database queue tree to the proof tree.
+    /// This removes the job from any further processing by workers.
+    /// The [JobStatus] should be success or failure only
+    /// (but this is not enforced or checked at this time)
+    fn finalize_job(
         &self,
         job_key: Vec<u8>,
         job_status: JobStatus,
+    ) -> Result<(), InclusionServiceError> {
+        // TODO: do we want to do a status check here? To prevent accidenily getting into a DB invalid state
+        (&self.queue_db, &self.proof_db)
+            .transaction(|(queue_tx, proof_tx)| {
+                queue_tx.remove(job_key.clone())?.unwrap();
+                proof_tx.insert(job_key.clone(), bincode::serialize(&job_status).unwrap())?;
+                Ok::<(), sled::transaction::ConflictableTransactionError<InclusionServiceError>>(())
+            })
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Insert a [JobStatus] into a [SledTree] database
+    /// **AND** `send()` this job back to the `self.job_sender` to schedule more progress.
+    /// You likely want to pass `self.some_sled_tree` into `data_base` as input.
+    fn send_job_with_new_status(
+        &self,
+        data_base: &SledTree,
+        job_key: Vec<u8>,
+        update_status: JobStatus,
         job: Job,
     ) -> Result<(), InclusionServiceError> {
-        self.queue_db
+        debug!("Sending {job:?} back with updated status: {update_status:?}");
+        data_base
             .insert(
                 job_key,
-                bincode::serialize(&job_status)
+                bincode::serialize(&update_status)
                     .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?,
             )
             .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;

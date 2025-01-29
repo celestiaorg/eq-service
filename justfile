@@ -59,7 +59,6 @@ run *FLAGS: _pre-build _pre-run
 run-release *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     source .env
-    echo $NETWORK_PRIVATE_KEY
     cargo r -r -- {{ FLAGS }}
 
 build: _pre-build

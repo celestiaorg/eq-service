@@ -1878,12 +1878,12 @@ dependencies = [
 name = "eq-service"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "bincode",
  "celestia-rpc",
  "celestia-types",
  "env_logger",
  "eq-common",
- "hex",
  "jsonrpsee",
  "log",
  "prost",
