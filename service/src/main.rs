@@ -11,9 +11,7 @@ use eq_common::eqs::{
 };
 
 use celestia_rpc::{BlobClient, Client, HeaderClient};
-use celestia_types::blob::Commitment;
-use celestia_types::block::Height as BlockHeight;
-use celestia_types::nmt::Namespace;
+use celestia_types::{blob::Commitment, block::Height as BlockHeight, nmt::Namespace};
 use sp1_sdk::{Prover, ProverClient, SP1ProofWithPublicValues, SP1Stdin};
 use tokio::sync::mpsc;
 
@@ -32,10 +30,10 @@ const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
 type SuccNetJobId = [u8; 32];
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Job {
-    pub height: BlockHeight,
-    pub namespace: Namespace,
-    pub commitment: Commitment,
+struct Job {
+    height: BlockHeight,
+    namespace: Namespace,
+    commitment: Commitment,
 }
 
 impl std::fmt::Debug for Job {
@@ -58,7 +56,7 @@ impl std::fmt::Debug for Job {
 
 /// Used as a [Job] state machine for the eq-service.
 #[derive(Serialize, Deserialize)]
-pub enum JobStatus {
+enum JobStatus {
     /// DA inclusion proof data is being awaited
     DataAvalibilityPending,
     /// DA inclusion is processed and ready to send to the ZK prover
@@ -88,7 +86,7 @@ impl std::fmt::Debug for JobStatus {
     }
 }
 
-pub struct InclusionService {
+struct InclusionService {
     da_client: Arc<Client>,
     job_sender: mpsc::UnboundedSender<Job>,
     queue_db: SledTree,
@@ -96,7 +94,7 @@ pub struct InclusionService {
 }
 
 // I hate this workaround. Kill it with fire.
-pub struct InclusionServiceArc(Arc<InclusionService>);
+struct InclusionServiceArc(Arc<InclusionService>);
 
 #[tonic::async_trait]
 impl Inclusion for InclusionServiceArc {
@@ -248,9 +246,14 @@ impl InclusionService {
         debug!("Job worker started");
         while let Some(job) = job_receiver.recv().await {
             debug!("Job worker received {job:?}",);
+            let _ = self.prove(job).await; //Don't return with "?", we run keep looping
+        }
+        unreachable!("Worker loops on tasks")
+    }
 
-            let job_key = bincode::serialize(&job).unwrap();
-
+    async fn prove(&self, job: Job) -> Result<(), InclusionServiceError> {
+        let job_key = bincode::serialize(&job).unwrap();
+        Ok(
             if let Some(queue_data) = self.queue_db.get(&job_key).unwrap() {
                 let mut job_status: JobStatus = bincode::deserialize(&queue_data).unwrap();
                 debug!("Job worker processing with starting status: {job_status:?}");
@@ -260,7 +263,7 @@ impl InclusionService {
                             .await?
                     }
                     JobStatus::DataAvalibile(proof_input) => {
-                        match self.request_zk_proof(proof_input).await {
+                        match request_zk_proof(proof_input).await {
                             Ok(zk_job_id) => {
                                 job_status = JobStatus::ZkProofPending(zk_job_id);
                                 self.send_job_with_new_status(
@@ -278,7 +281,7 @@ impl InclusionService {
                         };
                     }
                     JobStatus::ZkProofPending(zk_job_id) => {
-                        match self.wait_for_zk_proof(zk_job_id).await {
+                        match wait_for_zk_proof(zk_job_id).await {
                             Ok(zk_proof) => {
                                 job_status = JobStatus::ZkProofFinished(zk_proof);
                                 self.finalize_job(&job_key, job_status)?;
@@ -296,9 +299,8 @@ impl InclusionService {
                         ()
                     }
                 }
-            }
-        }
-        unreachable!("Workers must have exhaustive status matching to handle jobs!")
+            },
+        )
     }
 
     /// Connect to the Cestia [Client] and attempt to get a NMP for a [Job].
@@ -394,44 +396,6 @@ impl InclusionService {
         };
     }
 
-    /// Start a proof request from Succinct's prover network
-    async fn request_zk_proof(
-        &self,
-        proof_input: KeccakInclusionToDataRootProofInput,
-    ) -> Result<SuccNetJobId, InclusionServiceError> {
-        debug!("Preparing prover network request and starting proving...");
-        let network_prover = ProverClient::builder().network().build();
-        let (pk, _vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
-
-        let mut stdin = SP1Stdin::new();
-        stdin.write(&proof_input);
-        let request_id: SuccNetJobId = network_prover
-            .prove(&pk, &stdin)
-            .groth16()
-            .request_async()
-            .await
-            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?
-            .into();
-
-        Ok(request_id)
-    }
-
-    /// Await a proof request from Succinct's prover network
-    async fn wait_for_zk_proof(
-        &self,
-        request_id: SuccNetJobId,
-    ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
-        debug!("Waiting for proof from prover network...");
-        // TODO: can the service hold a single instance of a prover client?
-        let network_prover = ProverClient::builder().network().build();
-        let _ = network_prover.setup(KECCAK_INCLUSION_ELF);
-
-        network_prover
-            .wait_proof(request_id.into(), None)
-            .await
-            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))
-    }
-
     /// Atomically move a job from the database queue tree to the proof tree.
     /// This removes the job from any further processing by workers.
     /// The [JobStatus] should be success or failure only
@@ -477,6 +441,42 @@ impl InclusionService {
     }
 }
 
+/// Start a proof request from Succinct's prover network
+async fn request_zk_proof(
+    proof_input: KeccakInclusionToDataRootProofInput,
+) -> Result<SuccNetJobId, InclusionServiceError> {
+    debug!("Preparing prover network request and starting proving...");
+    let network_prover = ProverClient::builder().network().build();
+    let (pk, _vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
+
+    let mut stdin = SP1Stdin::new();
+    stdin.write(&proof_input);
+    let request_id: SuccNetJobId = network_prover
+        .prove(&pk, &stdin)
+        .groth16()
+        .request_async()
+        .await
+        .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?
+        .into();
+
+    Ok(request_id)
+}
+
+/// Await a proof request from Succinct's prover network
+async fn wait_for_zk_proof(
+    request_id: SuccNetJobId,
+) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
+    debug!("Waiting for proof from prover network...");
+    // TODO: can the service hold a single instance of a prover client?
+    let network_prover = ProverClient::builder().network().build();
+    let _ = network_prover.setup(KECCAK_INCLUSION_ELF);
+
+    network_prover
+        .wait_proof(request_id.into(), None)
+        .await
+        .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -520,21 +520,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             debug!("{job:?}");
             if let Ok(job_status) = bincode::deserialize::<JobStatus>(&queue_data) {
                 match job_status {
-                    JobStatus::DataAvalibilityPending => {
-                        if let Err(e) = job_sender.send(job) {
-                            error!("Failed to send existing job to worker: {}", e);
-                        } else {
-                            jobs_sent_on_startup += 1;
-                        }
-                    }
-                    JobStatus::DataAvalibile(_) => {
-                        if let Err(e) = job_sender.send(job) {
-                            error!("Failed to send existing job to worker: {}", e);
-                        } else {
-                            jobs_sent_on_startup += 1;
-                        }
-                    }
-                    JobStatus::ZkProofPending(_) => {
+                    JobStatus::DataAvalibilityPending
+                    | JobStatus::DataAvalibile(_)
+                    | JobStatus::ZkProofPending(_) => {
                         if let Err(e) = job_sender.send(job) {
                             error!("Failed to send existing job to worker: {}", e);
                         } else {
