@@ -1910,7 +1910,6 @@ dependencies = [
  "eq-common",
  "jsonrpsee",
  "log",
- "prost",
  "serde",
  "sled",
  "sp1-sdk",

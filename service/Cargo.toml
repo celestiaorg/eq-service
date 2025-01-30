@@ -9,7 +9,6 @@ serde = { workspace = true, features = ["derive"] }
 bincode = {workspace = true}
 celestia-types = {workspace = true}
 celestia-rpc = {workspace = true}
-prost = {workspace = true}
 tokio = {workspace = true}
 tonic = {workspace = true}
 sled = {workspace = true}
