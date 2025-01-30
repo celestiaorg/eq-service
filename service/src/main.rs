@@ -1,6 +1,6 @@
 #![doc = include_str!("../../README.md")]
 
-use jsonrpsee::core::ClientError;
+use jsonrpsee::core::ClientError as JsonRpcError;
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -313,7 +313,7 @@ impl InclusionService {
         let blob = client
             .blob_get(job.height.into(), job.namespace, job.commitment)
             .await
-            .map_err(|e| self.handle_celestia_client_errror(e, &job, &job_key))?;
+            .map_err(|e| self.handle_da_client_error(e, &job, &job_key))?;
 
         let header = client
             .header_get_by_height(job.height.into())
@@ -348,49 +348,50 @@ impl InclusionService {
         )))
     }
 
-    /// Helper function to handle Results from Celestia
-    fn handle_celestia_client_errror(
+    /// Helper function to handle error from a [jsonrpsee] based DA client.
+    /// If we can handle the client error, we wrap Ok() it
+    /// If there is another issues (like writting to the DB) we Err
+    fn handle_da_client_error(
         &self,
-        celestia_client_error: ClientError,
+        da_client_error: JsonRpcError,
         job: &Job,
         job_key: &Vec<u8>,
-    ) -> Result<InclusionServiceError, InclusionServiceError> {
-        error!("Celestia Client error: {celestia_client_error}");
-        match celestia_client_error {
-            ClientError::Call(error_object) => {
+    ) -> InclusionServiceError {
+        error!("Celestia Client error: {da_client_error}");
+        let (e, job_status);
+        match da_client_error {
+            JsonRpcError::Call(error_object) => {
                 // TODO: make this handle errors much better! JSON stringyness is a problem!
                 if error_object.message() == "header: not found" {
-                    let e = InclusionServiceError::CelestiaError("header: not found. Likely Celestia Node is missing blob, although it exists on the network overall.".to_string());
+                    e = InclusionServiceError::CelestiaError("header: not found. Likely Celestia Node is missing blob, although it exists on the network overall.".to_string());
                     error!("{job:?} failed, recoverable: {e}");
-                    let job_status =
-                        JobStatus::Failed(e, Some(JobStatus::DataAvalibilityPending.into()));
-                    self.finalize_job(job_key, job_status)?;
-                };
-                if error_object.message() == "blob: not found" {
-                    let e = InclusionServiceError::CelestiaError("blob: not found".to_string());
+                    job_status = JobStatus::Failed(
+                        e.clone(),
+                        Some(JobStatus::DataAvalibilityPending.into()),
+                    );
+                } else if error_object.message() == "blob: not found" {
+                    e = InclusionServiceError::CelestiaError("blob: not found".to_string());
                     error!("{job:?} failed, not recoverable: {e}");
-                    let job_status = JobStatus::Failed(e, None);
-                    self.finalize_job(job_key, job_status)?;
-                };
-
-                let e = InclusionServiceError::CelestiaError("UNKNOWN client error".to_string());
-                error!("{job:?} failed, not recoverable: {e}");
-                let job_status = JobStatus::Failed(e, None);
-                self.finalize_job(job_key, job_status)?;
+                    job_status = JobStatus::Failed(e.clone(), None);
+                } else {
+                    e = InclusionServiceError::CelestiaError("UNKNOWN client error".to_string());
+                    error!("{job:?} failed, not recoverable: {e}");
+                    job_status = JobStatus::Failed(e.clone(), None);
+                }
             }
             // TODO: handle other Celestia JSON RPC errors
             _ => {
-                let e = InclusionServiceError::CelestiaError(
+                e = InclusionServiceError::CelestiaError(
                     "Unhandled Celestia SDK error".to_string(),
                 );
                 error!("{job:?} failed, not recoverable: {e}");
-                let job_status = JobStatus::Failed(e, None);
-                self.finalize_job(job_key, job_status)?;
+                job_status = JobStatus::Failed(e.clone(), None);
             }
         };
-        let err_msg = "Non-exhaustive Celestia, this should be unreachable".to_string();
-        error!("{err_msg}");
-        Ok(InclusionServiceError::GeneralError(err_msg))
+        match self.finalize_job(job_key, job_status) {
+            Ok(_) => return e,
+            Err(internal_err) => return internal_err,
+        };
     }
 
     /// Start a proof request from Succinct's prover network

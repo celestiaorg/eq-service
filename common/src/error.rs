@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Error, Debug, Serialize, Deserialize)]
+#[derive(Clone, Error, Debug, Serialize, Deserialize)]
 pub enum InclusionServiceError {
     #[error("Blob index not found")]
     MissingBlobIndex,
