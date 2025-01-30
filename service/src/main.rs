@@ -251,6 +251,7 @@ impl InclusionService {
         unreachable!("Worker loops on tasks")
     }
 
+    /// The main service task: produce a proof based on a [Job] requested.
     async fn prove(&self, job: Job) -> Result<(), InclusionServiceError> {
         let job_key = bincode::serialize(&job).unwrap();
         Ok(
@@ -263,7 +264,7 @@ impl InclusionService {
                             .await?
                     }
                     JobStatus::DataAvalibile(proof_input) => {
-                        match request_zk_proof(proof_input).await {
+                        match Self::request_zk_proof(proof_input).await {
                             Ok(zk_job_id) => {
                                 job_status = JobStatus::ZkProofPending(zk_job_id);
                                 self.send_job_with_new_status(
@@ -281,7 +282,7 @@ impl InclusionService {
                         };
                     }
                     JobStatus::ZkProofPending(zk_job_id) => {
-                        match wait_for_zk_proof(zk_job_id).await {
+                        match Self::wait_for_zk_proof(zk_job_id).await {
                             Ok(zk_proof) => {
                                 job_status = JobStatus::ZkProofFinished(zk_proof);
                                 self.finalize_job(&job_key, job_status)?;
@@ -396,6 +397,42 @@ impl InclusionService {
         };
     }
 
+    /// Start a proof request from Succinct's prover network
+    async fn request_zk_proof(
+        proof_input: KeccakInclusionToDataRootProofInput,
+    ) -> Result<SuccNetJobId, InclusionServiceError> {
+        debug!("Preparing prover network request and starting proving...");
+        let network_prover = ProverClient::builder().network().build();
+        let (pk, _vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
+
+        let mut stdin = SP1Stdin::new();
+        stdin.write(&proof_input);
+        let request_id: SuccNetJobId = network_prover
+            .prove(&pk, &stdin)
+            .groth16()
+            .request_async()
+            .await
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?
+            .into();
+
+        Ok(request_id)
+    }
+
+    /// Await a proof request from Succinct's prover network
+    async fn wait_for_zk_proof(
+        request_id: SuccNetJobId,
+    ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
+        debug!("Waiting for proof from prover network...");
+        // TODO: can the service hold a single instance of a prover client?
+        let network_prover = ProverClient::builder().network().build();
+        let _ = network_prover.setup(KECCAK_INCLUSION_ELF);
+
+        network_prover
+            .wait_proof(request_id.into(), None)
+            .await
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))
+    }
+
     /// Atomically move a job from the database queue tree to the proof tree.
     /// This removes the job from any further processing by workers.
     /// The [JobStatus] should be success or failure only
@@ -439,42 +476,6 @@ impl InclusionService {
             .send(job)
             .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?)
     }
-}
-
-/// Start a proof request from Succinct's prover network
-async fn request_zk_proof(
-    proof_input: KeccakInclusionToDataRootProofInput,
-) -> Result<SuccNetJobId, InclusionServiceError> {
-    debug!("Preparing prover network request and starting proving...");
-    let network_prover = ProverClient::builder().network().build();
-    let (pk, _vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
-
-    let mut stdin = SP1Stdin::new();
-    stdin.write(&proof_input);
-    let request_id: SuccNetJobId = network_prover
-        .prove(&pk, &stdin)
-        .groth16()
-        .request_async()
-        .await
-        .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?
-        .into();
-
-    Ok(request_id)
-}
-
-/// Await a proof request from Succinct's prover network
-async fn wait_for_zk_proof(
-    request_id: SuccNetJobId,
-) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
-    debug!("Waiting for proof from prover network...");
-    // TODO: can the service hold a single instance of a prover client?
-    let network_prover = ProverClient::builder().network().build();
-    let _ = network_prover.setup(KECCAK_INCLUSION_ELF);
-
-    network_prover
-        .wait_proof(request_id.into(), None)
-        .await
-        .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))
 }
 
 #[tokio::main]
