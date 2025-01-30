@@ -239,14 +239,14 @@ impl InclusionService {
     ///
     /// Once the job comes to an ending successful or failed state,
     /// the job is atomically removed from the queue and added to a results data base.
-    async fn job_worker(
-        &self,
-        mut job_receiver: mpsc::UnboundedReceiver<Job>,
-    ) -> Result<(), InclusionServiceError> {
+    async fn job_worker(self: Arc<Self>, mut job_receiver: mpsc::UnboundedReceiver<Job>) {
         debug!("Job worker started");
         while let Some(job) = job_receiver.recv().await {
-            debug!("Job worker received {job:?}",);
-            let _ = self.prove(job).await; //Don't return with "?", we run keep looping
+            let service = Arc::clone(&self);
+            tokio::spawn(async move {
+                debug!("Job worker received {job:?}",);
+                let _ = service.prove(job).await; //Don't return with "?", we run keep looping
+            });
         }
         unreachable!("Worker loops on tasks")
     }
