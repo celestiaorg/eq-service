@@ -1,7 +1,6 @@
 #![doc = include_str!("../../README.md")]
 
 use jsonrpsee::core::ClientError;
-use std::fmt::Debug;
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -41,14 +40,18 @@ pub struct Job {
 
 impl std::fmt::Debug for Job {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let namespace_serialized =
-            base64::engine::general_purpose::STANDARD.encode(&self.namespace.as_bytes());
-        let commitment_serialized =
+        let namespace_string;
+        if let Some(namespace) = &self.namespace.id_v0() {
+            namespace_string = base64::engine::general_purpose::STANDARD.encode(namespace);
+        } else {
+            namespace_string = "Invalid v0 ID".to_string()
+        }
+        let commitment_string =
             base64::engine::general_purpose::STANDARD.encode(&self.commitment.hash());
         f.debug_struct("Job")
-            .field("height", &self.height)
-            .field("namespace", &namespace_serialized)
-            .field("commitment", &commitment_serialized)
+            .field("height", &self.height.value())
+            .field("namespace", &namespace_string)
+            .field("commitment", &commitment_string)
             .finish()
     }
 }
@@ -307,58 +310,19 @@ impl InclusionService {
         client: Arc<Client>,
     ) -> Result<(), InclusionServiceError> {
         debug!("Preparing request to Celestia...");
-        let height = job.height;
-
-        debug!("Getting blob from Celestia...");
-        let try_blob = client
+        let blob = client
             .blob_get(job.height.into(), job.namespace, job.commitment)
-            .await;
-        // TODO this is a messy way to handle edge case errors...
-        if let Err(e) = &try_blob {
-            error!("Celestia Client error: {e}");
-            match e {
-                ClientError::Call(error_object) => {
-                    // TODO: make this handle errors much better! JSON stringyness is a problem!
-                    if error_object.message() == "header: not found" {
-                        let e = InclusionServiceError::CelestiaError("header: not found. Likely Celestia Node is missing blob, although it exists on the network overall.".to_string());
-                        error!("{job:?} failed, recoverable: {e}");
-                        let job_status =
-                            JobStatus::Failed(e, Some(JobStatus::DataAvalibilityPending.into()));
-                        return self.finalize_job(&job_key, job_status);
-                    };
-                    if error_object.message() == "blob: not found" {
-                        let e = InclusionServiceError::CelestiaError("blob: not found".to_string());
-                        error!("{job:?} failed, not recoverable: {e}");
-                        let job_status = JobStatus::Failed(e, None);
-                        return self.finalize_job(&job_key, job_status);
-                    };
-
-                    let e =
-                        InclusionServiceError::CelestiaError("UNKNOWN client error".to_string());
-                    error!("{job:?} failed, not recoverable: {e}");
-                    let job_status = JobStatus::Failed(e, None);
-                    return self.finalize_job(&job_key, job_status);
-                }
-                // TODO: handle other Celestia JSON RPC errors
-                _ => {
-                    let e = InclusionServiceError::CelestiaError(
-                        "Unhandled Celestia SDK error".to_string(),
-                    );
-                    error!("{job:?} failed, not recoverable: {e}");
-                    let job_status = JobStatus::Failed(e, None);
-                    return self.finalize_job(&job_key, job_status);
-                }
-            }
-        };
-        let blob = try_blob.expect("exhaustive error handling");
-
-        debug!("Getting header from Celestia...");
-        let header = client
-            .header_get_by_height(height.into())
             .await
-            .map_err(|e| InclusionServiceError::CelestiaError(e.to_string()))?;
+            .map_err(|e| self.handle_celestia_client_errror(e, &job, &job_key))?;
 
-        debug!("Getting NMT multiproofs from Celestia...");
+        let header = client
+            .header_get_by_height(job.height.into())
+            .await
+            .map_err(|e| {
+                error!("Failed to get header proof from Celestia: {}", e);
+                InclusionServiceError::CelestiaError(e.to_string())
+            })?;
+
         let nmt_multiproofs = client
             .blob_get_proof(job.height.into(), job.namespace, job.commitment)
             .await
@@ -383,14 +347,61 @@ impl InclusionService {
             "Could not obtain NMT proof of data inclusion"
         )))
     }
+
+    /// Helper function to handle Results from Celestia
+    fn handle_celestia_client_errror(
+        &self,
+        celestia_client_error: ClientError,
+        job: &Job,
+        job_key: &Vec<u8>,
+    ) -> Result<InclusionServiceError, InclusionServiceError> {
+        error!("Celestia Client error: {celestia_client_error}");
+        match celestia_client_error {
+            ClientError::Call(error_object) => {
+                // TODO: make this handle errors much better! JSON stringyness is a problem!
+                if error_object.message() == "header: not found" {
+                    let e = InclusionServiceError::CelestiaError("header: not found. Likely Celestia Node is missing blob, although it exists on the network overall.".to_string());
+                    error!("{job:?} failed, recoverable: {e}");
+                    let job_status =
+                        JobStatus::Failed(e, Some(JobStatus::DataAvalibilityPending.into()));
+                    self.finalize_job(job_key, job_status)?;
+                };
+                if error_object.message() == "blob: not found" {
+                    let e = InclusionServiceError::CelestiaError("blob: not found".to_string());
+                    error!("{job:?} failed, not recoverable: {e}");
+                    let job_status = JobStatus::Failed(e, None);
+                    self.finalize_job(job_key, job_status)?;
+                };
+
+                let e = InclusionServiceError::CelestiaError("UNKNOWN client error".to_string());
+                error!("{job:?} failed, not recoverable: {e}");
+                let job_status = JobStatus::Failed(e, None);
+                self.finalize_job(job_key, job_status)?;
+            }
+            // TODO: handle other Celestia JSON RPC errors
+            _ => {
+                let e = InclusionServiceError::CelestiaError(
+                    "Unhandled Celestia SDK error".to_string(),
+                );
+                error!("{job:?} failed, not recoverable: {e}");
+                let job_status = JobStatus::Failed(e, None);
+                self.finalize_job(job_key, job_status)?;
+            }
+        };
+        let err_msg = "Non-exhaustive Celestia, this should be unreachable".to_string();
+        error!("{err_msg}");
+        Ok(InclusionServiceError::GeneralError(err_msg))
+    }
+
+    /// Start a proof request from Succinct's prover network
     async fn request_zk_proof(
         &self,
         proof_input: KeccakInclusionToDataRootProofInput,
     ) -> Result<SuccNetJobId, InclusionServiceError> {
+        debug!("Preparing prover network request and starting proving...");
         let network_prover = ProverClient::builder().network().build();
         let (pk, _vk) = network_prover.setup(KECCAK_INCLUSION_ELF);
 
-        debug!("Preparing prover network request and starting proving...");
         let mut stdin = SP1Stdin::new();
         stdin.write(&proof_input);
         let request_id: SuccNetJobId = network_prover
@@ -404,15 +415,16 @@ impl InclusionService {
         Ok(request_id)
     }
 
+    /// Await a proof request from Succinct's prover network
     async fn wait_for_zk_proof(
         &self,
         request_id: SuccNetJobId,
     ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
+        debug!("Waiting for proof from prover network...");
         // TODO: can the service hold a single instance of a prover client?
         let network_prover = ProverClient::builder().network().build();
         let _ = network_prover.setup(KECCAK_INCLUSION_ELF);
 
-        debug!("Waiting for proof from prover network...");
         network_prover
             .wait_proof(request_id.into(), None)
             .await
