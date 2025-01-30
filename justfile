@@ -3,6 +3,7 @@ default:
 
 alias r := run
 alias rr := run-release
+alias rd := run-debug
 alias b := build
 alias br := build-release
 alias f := fmt
@@ -61,6 +62,18 @@ run-release *FLAGS: _pre-build _pre-run
     source .env
     cargo r -r -- {{ FLAGS }}
 
+run-debug *FLAGS: _pre-build _pre-run
+    #!/usr/bin/env bash
+    source .env
+    # Check node up with https://github.com/vi/websocat?tab=readme-ov-file#from-source
+    if ! echo "ping" | websocat $CELESTIA_NODE_WS -1 -E &> /dev/null ; then
+        echo -e "⛔ Node not avalible @ $CELESTIA_NODE_WS - start a mocha one locally with 'just mocha' "
+        exit 1
+    fi
+
+    # export CELESTIA_NODE_AUTH_TOKEN=$(celestia light auth admin --p2p.network mocha)
+    RUST_LOG=eq_service=debug cargo r -- {{ FLAGS }}
+
 build: _pre-build
     cargo b
 
@@ -78,3 +91,8 @@ fmt:
 doc:
     RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --no-deps --workspace
     xdg-open {{ justfile_directory() }}/target/doc/index.html
+
+mocha:
+    # Assumes you already did init for this & configured
+    # If not, see https://docs.celestia.org/tutorials/node-tutorial#setting-up-dependencies
+    celestia light start --core.ip rpc-mocha.pops.one --p2p.network mocha
