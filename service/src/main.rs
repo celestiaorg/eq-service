@@ -1,6 +1,7 @@
 #![doc = include_str!("../../README.md")]
 
 use jsonrpsee::core::ClientError;
+use std::fmt::Debug;
 use std::sync::Arc;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -67,7 +68,7 @@ pub enum JobStatus {
     // They don't seem to provide a type for that.
     ZkProofFinished(SP1ProofWithPublicValues),
     /// A wrapper for any [InclusionServiceError], with:
-    /// - Option = None               -> No rety is possilbe (Perminent failure)
+    /// - Option = None               -> No retry is possilbe (Perminent failure)
     /// - Option = Some(\<retry-able status\>) -> Retry is possilbe, with a JobStatus state to retry with
     Failed(InclusionServiceError, Option<Box<JobStatus>>),
 }
@@ -147,10 +148,11 @@ impl Inclusion for InclusionServiceArc {
                     }));
                 }
                 JobStatus::Failed(error, retry_status) => {
+                    // TODO: retry or not?
                     return Ok(Response::new(GetKeccakInclusionResponse {
                         status: ResponseStatus::Waiting as i32,
                         response_value: Some(ResponseValue::StatusMessage(format!(
-                            "Retyring: {retry_status:?} ||| Previous Error: {error:?}"
+                            "Retryring: {retry_status:?} ||| Previous Error: {error:?}"
                         ))),
                     }));
                 }
@@ -251,25 +253,8 @@ impl InclusionService {
                 debug!("Job worker processing with starting status: {job_status:?}");
                 match job_status {
                     JobStatus::DataAvalibilityPending => {
-                        match self
-                            .get_zk_proof_input_from_da(&job, self.da_client.clone())
-                            .await
-                        {
-                            Ok(proof_input) => {
-                                job_status = JobStatus::DataAvalibile(proof_input);
-                                self.send_job_with_new_status(
-                                    &self.queue_db,
-                                    job_key,
-                                    job_status,
-                                    job,
-                                )?;
-                            }
-                            Err(e) => {
-                                error!("{job:?} failed progressing DataAvalibilityPending: {e}");
-                                job_status = JobStatus::Failed(e, None);
-                                self.finalize_job(job_key, job_status)?;
-                            }
-                        };
+                        self.get_zk_proof_input_from_da(&job, job_key, self.da_client.clone())
+                            .await?
                     }
                     JobStatus::DataAvalibile(proof_input) => {
                         match self.request_zk_proof(proof_input).await {
@@ -285,7 +270,7 @@ impl InclusionService {
                             Err(e) => {
                                 error!("{job:?} failed progressing DataAvalibile: {e}");
                                 job_status = JobStatus::Failed(e, None);
-                                self.finalize_job(job_key, job_status)?;
+                                self.finalize_job(&job_key, job_status)?;
                             }
                         };
                     }
@@ -293,12 +278,12 @@ impl InclusionService {
                         match self.wait_for_zk_proof(zk_job_id).await {
                             Ok(zk_proof) => {
                                 job_status = JobStatus::ZkProofFinished(zk_proof);
-                                self.finalize_job(job_key, job_status)?;
+                                self.finalize_job(&job_key, job_status)?;
                             }
                             Err(e) => {
                                 error!("{job:?} failed progressing ZkProofPending: {e}");
                                 job_status = JobStatus::Failed(e, None);
-                                self.finalize_job(job_key, job_status)?;
+                                self.finalize_job(&job_key, job_status)?;
                             }
                         }
                     }
@@ -318,8 +303,9 @@ impl InclusionService {
     async fn get_zk_proof_input_from_da(
         &self,
         job: &Job,
+        job_key: Vec<u8>,
         client: Arc<Client>,
-    ) -> Result<KeccakInclusionToDataRootProofInput, InclusionServiceError> {
+    ) -> Result<(), InclusionServiceError> {
         debug!("Preparing request to Celestia...");
         let height = job.height;
 
@@ -327,26 +313,44 @@ impl InclusionService {
         let try_blob = client
             .blob_get(job.height.into(), job.namespace, job.commitment)
             .await;
-        let blob = try_blob.map_err(|e: ClientError| {
+        // TODO this is a messy way to handle edge case errors...
+        if let Err(e) = &try_blob {
             error!("Celestia Client error: {e}");
             match e {
                 ClientError::Call(error_object) => {
-                    // TODO: make this handle errors much better!  See ErrorCode::ServerError(1){
+                    // TODO: make this handle errors much better! JSON stringyness is a problem!
                     if error_object.message() == "header: not found" {
-                        error!("Hit recoverable Celestia error");
-                        return InclusionServiceError::CelestiaError("header not found. Likely Celestia Node is missing blob, although it exists on the network overall.".to_string());
+                        let e = InclusionServiceError::CelestiaError("header: not found. Likely Celestia Node is missing blob, although it exists on the network overall.".to_string());
+                        error!("{job:?} failed, recoverable: {e}");
+                        let job_status =
+                            JobStatus::Failed(e, Some(JobStatus::DataAvalibilityPending.into()));
+                        return self.finalize_job(&job_key, job_status);
                     };
                     if error_object.message() == "blob: not found" {
-                        error!("Hit permanent Celestia error");
-                        return InclusionServiceError::CelestiaError("blob: not found. Likely the blob doesn't exist in the chain".to_string());
+                        let e = InclusionServiceError::CelestiaError("blob: not found".to_string());
+                        error!("{job:?} failed, not recoverable: {e}");
+                        let job_status = JobStatus::Failed(e, None);
+                        return self.finalize_job(&job_key, job_status);
                     };
 
-                    InclusionServiceError::CelestiaError("UNKNOWN client error!".to_string())
+                    let e =
+                        InclusionServiceError::CelestiaError("UNKNOWN client error".to_string());
+                    error!("{job:?} failed, not recoverable: {e}");
+                    let job_status = JobStatus::Failed(e, None);
+                    return self.finalize_job(&job_key, job_status);
                 }
                 // TODO: handle other Celestia JSON RPC errors
-                _ => InclusionServiceError::CelestiaError("Unhandled Celestia SDK error".to_string()),
+                _ => {
+                    let e = InclusionServiceError::CelestiaError(
+                        "Unhandled Celestia SDK error".to_string(),
+                    );
+                    error!("{job:?} failed, not recoverable: {e}");
+                    let job_status = JobStatus::Failed(e, None);
+                    return self.finalize_job(&job_key, job_status);
+                }
             }
-        })?;
+        };
+        let blob = try_blob.expect("exhaustive error handling");
 
         debug!("Getting header from Celestia...");
         let header = client
@@ -365,7 +369,13 @@ impl InclusionService {
 
         debug!("Creating ZK Proof input from Celestia Data...");
         if let Ok(proof_input) = create_inclusion_proof_input(&blob, &header, nmt_multiproofs) {
-            return Ok(proof_input);
+            self.send_job_with_new_status(
+                &self.queue_db,
+                job_key,
+                JobStatus::DataAvalibile(proof_input),
+                job.clone(),
+            )?;
+            return Ok(());
         }
 
         error!("Failed to get proof from Celestia - This should be unrechable!");
@@ -373,51 +383,6 @@ impl InclusionService {
             "Could not obtain NMT proof of data inclusion"
         )))
     }
-
-    /// Atomically move a job from the database queue tree to the proof tree.
-    /// This removes the job from any further processing by workers.
-    /// The [JobStatus] should be success or failure only
-    /// (but this is not enforced or checked at this time)
-    fn finalize_job(
-        &self,
-        job_key: Vec<u8>,
-        job_status: JobStatus,
-    ) -> Result<(), InclusionServiceError> {
-        // TODO: do we want to do a status check here? To prevent accidenily getting into a DB invalid state
-        (&self.queue_db, &self.proof_db)
-            .transaction(|(queue_tx, proof_tx)| {
-                queue_tx.remove(job_key.clone())?.unwrap();
-                proof_tx.insert(job_key.clone(), bincode::serialize(&job_status).unwrap())?;
-                Ok::<(), sled::transaction::ConflictableTransactionError<InclusionServiceError>>(())
-            })
-            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
-        Ok(())
-    }
-
-    /// Insert a [JobStatus] into a [SledTree] database
-    /// AND `send()` this job back to the `self.job_sender` to schedule more progress.
-    /// You likely want to pass `self.some_sled_tree` into `data_base` as input.
-    fn send_job_with_new_status(
-        &self,
-        data_base: &SledTree,
-        job_key: Vec<u8>,
-        update_status: JobStatus,
-        job: Job,
-    ) -> Result<(), InclusionServiceError> {
-        debug!("Sending {job:?} back with updated status: {update_status:?}");
-        data_base
-            .insert(
-                job_key,
-                bincode::serialize(&update_status)
-                    .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?,
-            )
-            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
-        Ok(self
-            .job_sender
-            .send(job)
-            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?)
-    }
-
     async fn request_zk_proof(
         &self,
         proof_input: KeccakInclusionToDataRootProofInput,
@@ -452,6 +417,50 @@ impl InclusionService {
             .wait_proof(request_id.into(), None)
             .await
             .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))
+    }
+
+    /// Atomically move a job from the database queue tree to the proof tree.
+    /// This removes the job from any further processing by workers.
+    /// The [JobStatus] should be success or failure only
+    /// (but this is not enforced or checked at this time)
+    fn finalize_job(
+        &self,
+        job_key: &Vec<u8>,
+        job_status: JobStatus,
+    ) -> Result<(), InclusionServiceError> {
+        // TODO: do we want to do a status check here? To prevent accidenily getting into a DB invalid state
+        (&self.queue_db, &self.proof_db)
+            .transaction(|(queue_tx, proof_tx)| {
+                queue_tx.remove(job_key.clone())?;
+                proof_tx.insert(job_key.clone(), bincode::serialize(&job_status).unwrap())?;
+                Ok::<(), sled::transaction::ConflictableTransactionError<InclusionServiceError>>(())
+            })
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Insert a [JobStatus] into a [SledTree] database
+    /// AND `send()` this job back to the `self.job_sender` to schedule more progress.
+    /// You likely want to pass `self.some_sled_tree` into `data_base` as input.
+    fn send_job_with_new_status(
+        &self,
+        data_base: &SledTree,
+        job_key: Vec<u8>,
+        update_status: JobStatus,
+        job: Job,
+    ) -> Result<(), InclusionServiceError> {
+        debug!("Sending {job:?} back with updated status: {update_status:?}");
+        data_base
+            .insert(
+                job_key,
+                bincode::serialize(&update_status)
+                    .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?,
+            )
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?;
+        Ok(self
+            .job_sender
+            .send(job)
+            .map_err(|e| InclusionServiceError::GeneralError(e.to_string()))?)
     }
 }
 
@@ -495,9 +504,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for entry_result in queue_tree.iter() {
         if let Ok((job_key, queue_data)) = entry_result {
             let job: Job = bincode::deserialize(&job_key).unwrap();
+            debug!("{job:?}");
             if let Ok(job_status) = bincode::deserialize::<JobStatus>(&queue_data) {
                 match job_status {
                     JobStatus::DataAvalibilityPending => {
+                        if let Err(e) = job_sender.send(job) {
+                            error!("Failed to send existing job to worker: {}", e);
+                        } else {
+                            jobs_sent_on_startup += 1;
+                        }
+                    }
+                    JobStatus::DataAvalibile(_) => {
                         if let Err(e) = job_sender.send(job) {
                             error!("Failed to send existing job to worker: {}", e);
                         } else {
@@ -511,7 +528,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             jobs_sent_on_startup += 1;
                         }
                     }
-                    _ => {}
+                    _ => {
+                        error!("Failed to send job from queue! Likely queue in invalid state!")
+                    }
                 }
             }
         }
