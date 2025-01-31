@@ -13,10 +13,11 @@ zkvm-elf-path := "./target/elf-compilation/riscv32im-succinct-zkvm-elf/release/e
 env-settings := "./.env"
 sp1up-path := shell("which sp1up")
 cargo-prove-path := shell("which cargo-prove")
+websocat-path := shell("which cargo-prove")
+
 
 initial-config-installs:
     #!/usr/bin/env bash
-    echo {{ path_exists(sp1up-path) }}
     if ! {{ path_exists(sp1up-path) }}; then
         curl -L https://sp1.succinct.xyz | bash
     fi
@@ -66,6 +67,10 @@ run-debug *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     source .env
     # Check node up with https://github.com/vi/websocat?tab=readme-ov-file#from-source
+    if ! {{ path_exists(websocat-path) }}; then
+        echo -e "⛔ Missing websocat tool.\nRun `cargo install websocat` to install"
+        exit 1
+    fi
     if ! echo "ping" | websocat $CELESTIA_NODE_WS -1 -E &> /dev/null ; then
         echo -e "⛔ Node not avalible @ $CELESTIA_NODE_WS - start a mocha one locally with 'just mocha' "
         exit 1

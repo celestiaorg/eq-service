@@ -123,13 +123,13 @@ impl Inclusion for InclusionServiceArc {
         let job_key = bincode::serialize(&job).map_err(|e| Status::internal(e.to_string()))?;
 
         // First check proof_tree for completed/failed proofs
-        debug!("Checking for job status in finalized proof_tree");
         if let Some(proof_data) = self
             .0
             .proof_db
             .get(&job_key)
             .map_err(|e| Status::internal(e.to_string()))?
         {
+            debug!("Job finalized proof");
             let job_status: JobStatus =
                 bincode::deserialize(&proof_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
@@ -166,13 +166,13 @@ impl Inclusion for InclusionServiceArc {
         }
 
         // Then check queue_tree for pending proofs
-        debug!("Checking job status for pending queue_tree");
         if let Some(queue_data) = self
             .0
             .queue_db
             .get(&job_key)
             .map_err(|e| Status::internal(e.to_string()))?
         {
+            debug!("Job in pending queue");
             let job_status: JobStatus =
                 bincode::deserialize(&queue_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
@@ -206,7 +206,7 @@ impl Inclusion for InclusionServiceArc {
             }
         }
 
-        debug!("Sending job to worker and adding to queue...");
+        info!("New {job:?} sending to worker and adding to queue...");
         self.0
             .queue_db
             .insert(
@@ -266,6 +266,7 @@ impl InclusionService {
                     JobStatus::DataAvalibile(proof_input) => {
                         match Self::request_zk_proof(proof_input).await {
                             Ok(zk_job_id) => {
+                                debug!("DA data -> zk input ready");
                                 job_status = JobStatus::ZkProofPending(zk_job_id);
                                 self.send_job_with_new_status(
                                     &self.queue_db,
@@ -284,6 +285,7 @@ impl InclusionService {
                     JobStatus::ZkProofPending(zk_job_id) => {
                         match Self::wait_for_zk_proof(zk_job_id).await {
                             Ok(zk_proof) => {
+                                info!("🎉 {job:?} Finished!");
                                 job_status = JobStatus::ZkProofFinished(zk_proof);
                                 self.finalize_job(&job_key, job_status)?;
                             }
