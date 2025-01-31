@@ -10,7 +10,7 @@ bincode = {workspace = true}
 celestia-types = {workspace = true}
 celestia-rpc = {workspace = true}
 tokio = {workspace = true}
-tonic = {workspace = true}
+tonic = {workspace = true, features = ["transport"]}
 sled = {workspace = true}
 sp1-sdk = {workspace=true}
 env_logger = {workspace=true}
