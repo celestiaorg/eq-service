@@ -15,7 +15,6 @@ sp1up-path := shell("which sp1up")
 cargo-prove-path := shell("which cargo-prove")
 websocat-path := shell("which cargo-prove")
 
-
 initial-config-installs:
     #!/usr/bin/env bash
     if ! {{ path_exists(sp1up-path) }}; then
