@@ -1,7 +1,8 @@
 #![doc = include_str!("../README.md")]
 #![no_main]
+
 sp1_zkvm::entrypoint!(main);
-use alloy::{primitives::B256, primitives::U256, sol, sol_types::SolType};
+use alloy::{primitives::B256, sol_types::SolType};
 use celestia_types::{
     blob::Blob,
     nmt::{MerkleHash, NamespacedHashExt},

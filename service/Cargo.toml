@@ -17,6 +17,3 @@ env_logger = {workspace=true}
 log = {workspace=true}
 base64 = {workspace = true}
 jsonrpsee = {workspace=true}
-
-[build-dependencies]
-tonic-build = {workspace = true}
