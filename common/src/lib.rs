@@ -50,6 +50,7 @@ pub struct KeccakInclusionToDataRootProofOutput {
     pub data_root: Vec<u8>,
 }*/
 
+#[cfg(feature = "service")]
 pub mod eqs {
     include!("generated/eqs.rs");
 }

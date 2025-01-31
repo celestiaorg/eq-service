@@ -13,7 +13,10 @@ sha3 = {workspace = true}
 thiserror = {workspace = true}
 alloy = {workspace = true, features = ["sol-types"]}
 prost = {workspace = true}
-tonic = {workspace = true}
+tonic = {workspace = true, optional = true}
+
+[features]
+service = ["tonic"]
 
 [build-dependencies]
 tonic-build = {workspace = true}

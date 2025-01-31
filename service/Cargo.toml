@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-eq-common = {path = "../common"}
+eq-common = {path = "../common", features = ["service"]}
 serde = { workspace = true, features = ["derive"] }
 bincode = {workspace = true}
 celestia-types = {workspace = true}
