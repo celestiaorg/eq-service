@@ -2,7 +2,7 @@
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetKeccakInclusionRequest {
-    /// Data Avaliblity block height
+    /// Data Availability (DA) block height
     #[prost(uint64, tag = "1")]
     pub height: u64,
     /// 32 byte DA namespace
@@ -37,10 +37,10 @@ pub mod get_keccak_inclusion_response {
     )]
     #[repr(i32)]
     pub enum Status {
-        /// Data Avaliblity (DA) inclusion proof being collected
+        /// Data Availability (DA) inclusion proof being collected
         DaPending = 0,
         /// DA inclusion proof collected
-        DaAvalible = 1,
+        DaAvailable = 1,
         /// Zero Knowledge Proof (ZKP) of DA inclusion requested, generating
         ZkpPending = 2,
         /// ZKP of DA inclusion proof finished
@@ -58,7 +58,7 @@ pub mod get_keccak_inclusion_response {
         pub fn as_str_name(&self) -> &'static str {
             match self {
                 Status::DaPending => "DA_PENDING",
-                Status::DaAvalible => "DA_AVALIBLE",
+                Status::DaAvailable => "DA_AVAILABLE",
                 Status::ZkpPending => "ZKP_PENDING",
                 Status::ZkpFinished => "ZKP_FINISHED",
                 Status::RetryableFailure => "RETRYABLE_FAILURE",
@@ -69,7 +69,7 @@ pub mod get_keccak_inclusion_response {
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "DA_PENDING" => Some(Self::DaPending),
-                "DA_AVALIBLE" => Some(Self::DaAvalible),
+                "DA_AVAILABLE" => Some(Self::DaAvailable),
                 "ZKP_PENDING" => Some(Self::ZkpPending),
                 "ZKP_FINISHED" => Some(Self::ZkpFinished),
                 "RETRYABLE_FAILURE" => Some(Self::RetryableFailure),

@@ -5,19 +5,19 @@ service Inclusion {
     rpc GetKeccakInclusion(GetKeccakInclusionRequest) returns (GetKeccakInclusionResponse);
 }
 message GetKeccakInclusionRequest {
-    uint64 height = 1;     // Data Avaliblity block height
-    bytes namespace = 2;   // 32 byte DA namespace
-    bytes commitment = 3;  // 32 byte DA blob commitment
+    uint64 height = 1;             // Data Availability (DA) block height
+    bytes namespace = 2;           // 32 byte DA namespace
+    bytes commitment = 3;          // 32 byte DA blob commitment
 }
 
 message GetKeccakInclusionResponse {
     enum Status {
-        DA_PENDING = 0;        // Data Avaliblity (DA) inclusion proof being collected
-        DA_AVALIBLE = 1;       // DA inclusion proof collected
-        ZKP_PENDING = 2;       // Zero Knowledge Proof (ZKP) of DA inclusion requested, generating
-        ZKP_FINISHED = 3;      // ZKP of DA inclusion proof finished
-        RETRYABLE_FAILURE = 4; // If this is returned, the service then attempts to retry
-        PERMANENT_FAILURE = 5; // No way to complete request
+        DA_PENDING = 0;            // Data Availability (DA) inclusion proof being collected
+        DA_AVAILABLE = 1;          // DA inclusion proof collected
+        ZKP_PENDING = 2;           // Zero Knowledge Proof (ZKP) of DA inclusion requested, generating
+        ZKP_FINISHED = 3;          // ZKP of DA inclusion proof finished
+        RETRYABLE_FAILURE = 4;     // If this is returned, the service then attempts to retry
+        PERMANENT_FAILURE = 5;     // No way to complete request
     }
     Status status = 1;
     oneof response_value {
