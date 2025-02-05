@@ -16,7 +16,7 @@ pub enum InclusionServiceError {
     ShareConversionError(String),
 
     #[error("Failed with: {0}")]
-    GeneralError(String),
+    InternalError(String),
 
     #[error("{0}")]
     ZkClientError(String),
