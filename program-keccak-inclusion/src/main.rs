@@ -25,13 +25,20 @@ pub fn main() {
 
     println!("cycle-tracker-start: converting blob to shares");
     let shares = blob.to_shares().expect("Failed to convert blob to shares");
+    println!("num shares: {}", shares.len());
     println!("cycle-tracker-end: converting blob to shares");
 
     println!("cycle-tracker-start: verifying NMT multiproofs");
     let mut start = 0;
+    println!("num row roots: {}", input.row_roots.len());
+    println!("num nmt multiproofs: {}", input.nmt_multiproofs.len());
     for i in 0..input.nmt_multiproofs.len() {
         let proof = &input.nmt_multiproofs[i];
         let end = start + (proof.end_idx() as usize - proof.start_idx() as usize);
+        println!("start: {}", start);
+        println!("end: {}", end);
+        println!("proof start: {}", proof.start_idx());
+        println!("proof end: {}", proof.end_idx());
         proof
             .verify_range(
                 &input.row_roots[i],

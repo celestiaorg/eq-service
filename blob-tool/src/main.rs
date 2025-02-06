@@ -57,9 +57,10 @@ async fn main() {
         .share_get_range(&header, index, index + blob.shares_len() as u64)
         .await
         .expect("Failed getting shares");
-    println!("shares len {:?}", shares.shares.len());
-    shares.proof.verify(header.hash()).expect("Failed verifying proof");
 
+    let sp = shares.proof;
+    println!("shares len {:?}", sp.shares().len());
+    sp.verify(header.dah.hash()).expect("Failed verifying proof");
     /*println!("getting nmt multiproofs...");
     let nmt_multiproofs = client
         .blob_get_proof(args.height, namespace, commitment)
