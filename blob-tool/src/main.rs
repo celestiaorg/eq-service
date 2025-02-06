@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use base64::Engine;
-use celestia_rpc::{BlobClient, Client, HeaderClient};
+use celestia_rpc::{BlobClient, Client, HeaderClient, ShareClient};
 use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
 use clap::{command, Parser};
@@ -50,7 +50,17 @@ async fn main() {
         .await
         .expect("Failed getting blob");
 
-    println!("getting nmt multiproofs...");
+    println!("shares len {:?}, starting index {:?}", blob.shares_len(), blob.index);
+
+    let index = blob.index.unwrap();
+    let shares = client
+        .share_get_range(&header, index, index + blob.shares_len() as u64)
+        .await
+        .expect("Failed getting shares");
+    println!("shares len {:?}", shares.shares.len());
+    shares.proof.verify(header.hash()).expect("Failed verifying proof");
+
+    /*println!("getting nmt multiproofs...");
     let nmt_multiproofs = client
         .blob_get_proof(args.height, namespace, commitment)
         .await
@@ -64,5 +74,5 @@ async fn main() {
 
     std::fs::write("proof_input.json", json).expect("Failed writing proof input to file");
 
-    println!("Wrote proof input to proof_input.json");
+    println!("Wrote proof input to proof_input.json");*/
 }
