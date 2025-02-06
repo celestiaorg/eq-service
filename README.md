@@ -1,50 +1,126 @@
 # Data Availability Equivalence Service
 
-A service acting as a "cryptographic adapter"[^1] providing proofs that data exists on [Celestia](https://celestia.org/) that are efficiently verifiable on EVM networks.
-A NMT proof is transformed into keccak inclusion for data roots using a zkVM.
+A gRPC service acting as a "cryptographic adapter" providing proofs that data (a blob) exists on [Celestia](https://celestia.org/) that are efficiently verifiable on EVM networks.
+A [Namespace Merkle Tree (NMT)](https://celestia.org/glossary/namespaced-merkle-tree/) proof is transformed via a [Zero Knowledge Proof (ZKP)](https://docs.succinct.xyz/docs/what-is-a-zkvm) into a keccak hash check.
 
-[^1] See "The Universal Protocol" in [0xPARC's blog](https://0xparc.org/blog/programmable-cryptography-1) for some more concrete ideas.
+**Jump to a section:**
+
+- Send a gRPC request to a running instance of the service: [Interact](#interact)
+- Spin up an instance of the service: [](#interact)
+
+## Interact
+
+To interact with the service, clients can use any gRPC client that supports protobuf messages. Here is an example using the [`grpcurl`](https://github.com/fullstorydev/grpcurl) CLI tool:
+
+```sh
+# Acquire the proto
+curl https://raw.githubusercontent.com/celestiaorg/eq-service/refs/heads/main/common/proto/eqservice.proto --output eqservice.proto
+
+# Bring required vars into scope, or replace $<variable> below
+
+export EQ_DB_PATH="/tmp/db-eq-service-testing"
+export EQ_SOCKET="127.0.0.1:50051"
+export EQ_PROTO_DIR="./common/proto"
+
+# Fetching the Keccak inclusion proof for a specific Celestia commitment, namespace, and height
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
+  -d '{height": <block height (integer)>", "namespace": "<your_namespace_hex>", commitment": "<your_commitment_hex>"}'
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+
+# Working examples using Celestia's mocha network
+
+# https://mocha.celenium.io/tx/e064ae79e06150ae75b37d3604c015d5698e173c52d0c2e3bf3203fe708e7513?tab=messages
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
+  -d '{"height": 4214864, "namespace": "3q2+796tvu8=", "commitment":"YcARQRj9KE/7sSXd4090FAONKkPz9ajYKIZq8liv3A0="}' \
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+
+# https://mocha.celenium.io/tx/c3c301fe579feb908fe02e2e8549c38f23707d30a3d4aa73e26402d854ff9104
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
+  -d '{"height": 4409088, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s="}' \
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+
+# https://mocha.celenium.io/tx/6ead3f794b384a9f41f58e62be4d58822626add607eefcb7ab9f0dd6b70a6abe
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
+  -d '{"height": 4499000, "namespace": "EV1P7ciRW7PodQ==", "commitment":"mV9udfLnkNqmG/3khk2/gH0wLPx/6RinVDCTV77X3Xw="}' \
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+
+# https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
+  -d '{"height": 4499999, "namespace": "Ucwac9Zflfa95g==", "commitment":"S2iIifIPdAjQ33KPeyfAga26FSF3IL11WsCGtJKSOTA="}' \
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+```
+
+## Operation
 
 ## Prerequisites
 
-- Rust & Cargo - [install instructions](https://www.rust-lang.org/tools/install)
-- Succinct's SP1 zkVM Toolchain - [install instructions](https://docs.succinct.xyz/docs/getting-started/install)
-- Protocol Buffers (Protobuf) compiler - [official examples](https://github.com/hyperium/tonic/tree/master/examples#examples) contain install instructions
-- Celestia Light Node - [installed](https://docs.celestia.org/how-to-guides/celestia-node) & [running](https://docs.celestia.org/tutorials/node-tutorial#auth-token) accessible on `localhost`, or elsewhere. Alternatively, use [an RPC provider](https://github.com/celestiaorg/awesome-celestia/?tab=readme-ov-file#node-operator-contributions) you trust.
-- Just - a modern alternative to `make` [installed](https://just.systems/man/en/packages.html)
+### Configuration
 
-## Installation
+Required and optional settings are best configured via a `.env` file. See [`example.env`](./example.env) for configurable items.
 
-1. Clone the repository:
+```sh
+cp example.env .env
+
+# edit .env
+
+source .env
+```
+
+### Building
+
+To build & develop, some tooling is required:
+
+1. Rust & Cargo - [install instructions](https://www.rust-lang.org/tools/install)
+1. Succinct's SP1 zkVM Toolchain - [install instructions](https://docs.succinct.xyz/docs/getting-started/install)
+1. Protocol Buffers (Protobuf) compiler - [official examples](https://github.com/hyperium/tonic/tree/master/examples#examples) contain install instructions
+1. (Optional) Just - a modern alternative to `make` [installed](https://just.systems/man/en/packages.html)
+
+### Running
+
+1. The service on it's own requires a fairly limited amount of machine resources:
+
+   - 2 threads
+   - 2GB RAM
+   - **NOTE:** These requirements may be significantly more to respond under heavy load, please report if you have issues!
+   - Ports required (by default):
+     - service listening at `50051`
+     - Light client (local or remote) over `26658`
+     - Succinct prover network over `443`
+
+1. A whitelisted key in your `env` for use with the Succinct prover network Key - [requested here](https://docs.succinct.xyz/docs/generating-proofs/prover-network).
+
+1. A Celestia Light Node [installed](https://docs.celestia.org/how-to-guides/celestia-node) & [running](https://docs.celestia.org/tutorials/node-tutorial#auth-token) accessible on `localhost`, or elsewhere.
+   Alternatively, use [an RPC provider](https://github.com/celestiaorg/awesome-celestia/?tab=readme-ov-file#node-operator-contributions) you trust.
+
+## Quick Start
+
+1. Clone the repo:
 
    ```sh
    git clone https://github.com/your-repo-name/eq-service.git
    cd eq-service
    ```
 
-2. Build and run the service:
+1. [Configure your environment](#configuration)
+
+1. Connect to a Celestia Node
+
+   - See the [How-to-guides on nodes](https://docs.celestia.org/how-to-guides/light-node) to run one yourself, or choose a provider & set in `env`.
+   - **NOTE:** You _must_ have the node synced back to the oldest possible height you may encounter in calling this service for it to fulfill that request.
+
+1. Build and run the service:
    ```sh
+   # NOT optimized, default includes debug logs printed
+   just run-debug
+   # Optimized build, to test realistic performance w/ INFO logs
    just run-release
    ```
 
-## Configuration
+There are many helper scripts exposed in the [justfile](./justfile), get a list with:
 
-Service settings are configured via a required `.env` file. See [`example.env`](./example.env) for configurable items.
-
-```sh
-cp example.env .env
-# edit .env
 ```
-
-This config is overridable by existing environment variables:
-
-```sh
-# Set a new database location, as a one-off
-DB_PATH="/tmp/just-playing" just rr
-
-# Set a new database for the remainder of this shell's life
-export DB_PATH="/some/other/place"
-just rr
+# Print just recipes
+just
 ```
 
 ## Architecture
@@ -81,68 +157,9 @@ The service interacts with a Celestia Node using gRPC to:
 
 ### Zero-Knowledge Proofs (ZKPs)
 
-The service uses [Succinct's pover network](https://docs.succinct.xyz/docs/generating-proofs/prover-network) as a provider to generate keccak proofs of data existing on Celestia.
+The service uses [Succinct's prover network](https://docs.succinct.xyz/docs/generating-proofs/prover-network) as a provider to generate ZKPs of data existing on Celestia.
 
-- See the [zkVM program](./program-keccak-inclusion/src/main.rs) for details on what is proven.
-
-## Usage
-
-To interact with the service, clients can use any gRPC client that supports protobuf messages. Here is an example using the [`grpcurl`](https://github.com/fullstorydev/grpcurl) CLI tool:
-
-### Connect to a Celestia Node
-
-See the [How-to-guides on nodes](https://docs.celestia.org/how-to-guides/light-node) to run one yourself, or choose a provider.
-Set the corret info in your `.env` file of choice.
-
-### Launch the Eq Service
-
-```sh
-# Bring required vars into scope, or replace $<variable> below
-source .env
-
-# Fetching the Keccak inclusion proof for a specific Celestia commitment, namespace, and height
-grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
-  -d '{height": <block height (integer)>", "namespace": "<your_namespace_hex>", commitment": "<your_commitment_hex>"}'
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
-
-# Working examples using Celestia's mocha network
-grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
-  -d '{"height": 4214864, "namespace": "3q2+796tvu8=", "commitment":"YcARQRj9KE/7sSXd4090FAONKkPz9ajYKIZq8liv3A0="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
-
-# https://mocha.celenium.io/tx/c3c301fe579feb908fe02e2e8549c38f23707d30a3d4aa73e26402d854ff9104
-grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
-  -d '{"height": 4409088, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
-
-# https://mocha.celenium.io/tx/6ead3f794b384a9f41f58e62be4d58822626add607eefcb7ab9f0dd6b70a6abe
-grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
-  -d '{"height": 4499000, "namespace": "EV1P7ciRW7PodQ==", "commitment":"mV9udfLnkNqmG/3khk2/gH0wLPx/6RinVDCTV77X3Xw="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
-
-# https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
-grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
-  -d '{"height": 4499999, "namespace": "Ucwac9Zflfa95g==", "commitment":"S2iIifIPdAjQ33KPeyfAga26FSF3IL11WsCGtJKSOTA="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
-```
-
-## Development
-
-### `grpc` and ELF Generation
-
-The requies `prost` and `tonic` to generate gRPC bindings, as well as a compiled verifiable program to execute in a RISC-V zkVM. To (re)generate the required files, run:
-
-```sh
-just build-fresh
-```
-
-### Testing
-
-The service includes basic tests to ensure that the core functionality works as expected. You can run these tests using Cargo:
-
-```sh
-just test
-```
+See the [ZKP program](./program-keccak-inclusion/src/main.rs) for details on what is proven.
 
 ## License
 

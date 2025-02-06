@@ -1,10 +1,9 @@
 default:
     @just --list
 
-alias r := run
+alias r := run-debug
 alias rr := run-release
-alias rd := run-debug
-alias b := build
+alias b := build-debug
 alias br := build-release
 alias f := fmt
 alias c := clean
@@ -15,6 +14,7 @@ sp1up-path := shell("which sp1up")
 cargo-prove-path := shell("which cargo-prove")
 websocat-path := shell("which cargo-prove")
 
+# Install SP1 tooling & more
 initial-config-installs:
     #!/usr/bin/env bash
     if ! {{ path_exists(sp1up-path) }}; then
@@ -45,23 +45,13 @@ _pre-run:
         exit 1
     fi
 
-local-mocha-node:
-    #!/usr/bin/env bash
-    source .env
-    export CELESTIA_NODE_AUTH_TOKEN=$(celestia light auth admin --p2p.network mocha)
-    echo -e "JWT for Light Node:\n$CELESTIA_NODE_AUTH_TOKEN"
-    # celestia light start --p2p.network mocha --core.ip rpc-mocha.pops.one
-
-run *FLAGS: _pre-build _pre-run
-    #!/usr/bin/env bash
-    source .env
-    cargo r -- {{ FLAGS }}
-
+# Run in release mode, with optimizations
 run-release *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     source .env
     cargo r -r -- {{ FLAGS }}
 
+# Run in debug mode, with extra pre-checks, no optimizations
 run-debug *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     source .env
@@ -78,25 +68,35 @@ run-debug *FLAGS: _pre-build _pre-run
     # export CELESTIA_NODE_AUTH_TOKEN=$(celestia light auth admin --p2p.network mocha)
     RUST_LOG=eq_service=debug cargo r -- {{ FLAGS }}
 
-build: _pre-build
+# Build in debug mode, no optimizations
+build-debug: _pre-build
     cargo b
 
+# Build in release mode, includes optimizations
 build-release: _pre-build
     cargo b -r
 
+# Scrub build artifacts
 clean:
     #!/usr/bin/env bash
     cargo clean
 
+# Format source code
 fmt:
     @cargo fmt
     @just --quiet --unstable --fmt > /dev/null
 
+# Build & open Rustdocs for the workspace
 doc:
     RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --no-deps --workspace
     xdg-open {{ justfile_directory() }}/target/doc/index.html
 
+# Launch a local Celestia testnet: Mocha
 mocha:
     # Assumes you already did init for this & configured
     # If not, see https://docs.celestia.org/tutorials/node-tutorial#setting-up-dependencies
     celestia light start --core.ip rpc-mocha.pops.one --p2p.network mocha
+
+# Setup and print to stdout, needs to be set in env to be picked up by eq-service
+mocha-local-auth:
+    celestia light auth admin --p2p.network mocha
