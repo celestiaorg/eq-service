@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use eq_common::KeccakInclusionToDataRootProofInput;
-use sp1_sdk::{CpuProver, Prover, ProverClient, SP1Stdin};
+use sp1_sdk::{Prover, ProverClient, SP1Stdin};
 use std::fs;
 
 const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
@@ -17,10 +17,10 @@ fn main() {
     let client = ProverClient::builder().cpu().build();
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
-    /*client
-    .execute(KECCAK_INCLUSION_ELF, &stdin)
-    .run()
-    .expect("Failed executing program");*/
+    // client
+    //     .execute(KECCAK_INCLUSION_ELF, &stdin)
+    //     .run()
+    //     .expect("Failed executing program");
 
     let (pk, _vk) = client.setup(&KECCAK_INCLUSION_ELF);
     let proof = client
