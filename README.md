@@ -3,25 +3,38 @@
 A gRPC service acting as a "cryptographic adapter" providing proofs that data (a blob) exists on [Celestia](https://celestia.org/) that are efficiently verifiable on EVM networks.
 A [Namespace Merkle Tree (NMT)](https://celestia.org/glossary/namespaced-merkle-tree/) proof is transformed via a [Zero Knowledge Proof (ZKP)](https://docs.succinct.xyz/docs/what-is-a-zkvm) into a keccak hash check.
 
+A few key features:
+
+- On each request, a status is returned. Internally the service will dive each request to success or failure.
+  - If a retryable failure is encountered, a subsequent request will attempt the job again.
+  - It is normal and safe behavior to regularly repeat the same request for status updates and retries.
+- The service eagerly caches work as it's completed, returning those results rather than redoing work.
+
 **Jump to a section:**
 
-- Send a gRPC request to a running instance of the service: [Interact](#interact)
-- Spin up an instance of the service: [](#interact)
+- Send requests this service: [Interact](#interact)
+- Spin up an instance of the service: [Operate](#operate)
+- Build & troubleshoot: [Develop](#develop)
 
 ## Interact
 
-To interact with the service, clients can use any gRPC client that supports protobuf messages. Here is an example using the [`grpcurl`](https://github.com/fullstorydev/grpcurl) CLI tool:
+To interact with the service, clients can use any gRPC client that supports protobuf messages.
+
+**The endpoint reports back a status, error, or success of a `Job` linked to identical request fields.**
+Repeated requests will yield status updates and eventually a finalized proof or error status.
+
+Here is an example using the [`grpcurl`](https://github.com/fullstorydev/grpcurl) CLI tool:
 
 ```sh
 # Acquire the proto
 curl https://raw.githubusercontent.com/celestiaorg/eq-service/refs/heads/main/common/proto/eqservice.proto --output eqservice.proto
 
-# Bring required vars into scope, or replace $<variable> below
-
-export EQ_DB_PATH="/tmp/db-eq-service-testing"
+# Local or remote instance of the eq-service
 export EQ_SOCKET="127.0.0.1:50051"
-export EQ_PROTO_DIR="./common/proto"
+# Where to find the proto file
+export EQ_PROTO_DIR="."
 
+# Example
 # Fetching the Keccak inclusion proof for a specific Celestia commitment, namespace, and height
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{height": <block height (integer)>", "namespace": "<your_namespace_hex>", commitment": "<your_commitment_hex>"}'
@@ -50,11 +63,7 @@ grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
 ```
 
-## Operation
-
-## Prerequisites
-
-### Configuration
+## Operate
 
 Required and optional settings are best configured via a `.env` file. See [`example.env`](./example.env) for configurable items.
 
@@ -66,31 +75,29 @@ cp example.env .env
 source .env
 ```
 
-### Building
-
-To build & develop, some tooling is required:
-
-1. Rust & Cargo - [install instructions](https://www.rust-lang.org/tools/install)
-1. Succinct's SP1 zkVM Toolchain - [install instructions](https://docs.succinct.xyz/docs/getting-started/install)
-1. Protocol Buffers (Protobuf) compiler - [official examples](https://github.com/hyperium/tonic/tree/master/examples#examples) contain install instructions
-1. (Optional) Just - a modern alternative to `make` [installed](https://just.systems/man/en/packages.html)
-
-### Running
-
-1. The service on it's own requires a fairly limited amount of machine resources:
+1. A machine to run with a _minimum_ of:
 
    - 2 threads
    - 2GB RAM
-   - **NOTE:** These requirements may be significantly more to respond under heavy load, please report if you have issues!
-   - Ports required (by default):
+   - Ports accessible (by default):
      - service listening at `50051`
      - Light client (local or remote) over `26658`
      - Succinct prover network over `443`
+   - **NOTE:** These requirements may be significantly more to respond under heavy load, please report if you have issues!
 
 1. A whitelisted key in your `env` for use with the Succinct prover network Key - [requested here](https://docs.succinct.xyz/docs/generating-proofs/prover-network).
 
 1. A Celestia Light Node [installed](https://docs.celestia.org/how-to-guides/celestia-node) & [running](https://docs.celestia.org/tutorials/node-tutorial#auth-token) accessible on `localhost`, or elsewhere.
    Alternatively, use [an RPC provider](https://github.com/celestiaorg/awesome-celestia/?tab=readme-ov-file#node-operator-contributions) you trust.
+
+## Develop
+
+First, some tooling is required:
+
+1. Rust & Cargo - [install instructions](https://www.rust-lang.org/tools/install)
+1. Succinct's SP1 zkVM Toolchain - [install instructions](https://docs.succinct.xyz/docs/getting-started/install)
+1. Protocol Buffers (Protobuf) compiler - [official examples](https://github.com/hyperium/tonic/tree/master/examples#examples) contain install instructions
+1. (Optional) Just - a modern alternative to `make` [installed](https://just.systems/man/en/packages.html)
 
 ## Quick Start
 
@@ -101,12 +108,12 @@ To build & develop, some tooling is required:
    cd eq-service
    ```
 
-1. [Configure your environment](#configuration)
-
-1. Connect to a Celestia Node
+1. Choose a Celestia Node
 
    - See the [How-to-guides on nodes](https://docs.celestia.org/how-to-guides/light-node) to run one yourself, or choose a provider & set in `env`.
    - **NOTE:** You _must_ have the node synced back to the oldest possible height you may encounter in calling this service for it to fulfill that request.
+
+1. [Configure required env variables](#operate)
 
 1. Build and run the service:
    ```sh
@@ -116,14 +123,14 @@ To build & develop, some tooling is required:
    just run-release
    ```
 
-There are many helper scripts exposed in the [justfile](./justfile), get a list with:
+There are many other helper scripts exposed in the [justfile](./justfile), get a list with:
 
 ```
 # Print just recipes
 just
 ```
 
-## Architecture
+### Architecture
 
 ```mermaid
 flowchart TB
