@@ -12,7 +12,7 @@ use sha3::{Digest, Keccak256};
 use std::cmp::max;
 use tendermint_proto::Protobuf;
 
-pub fn create_inclusion_proof_input(
+/*pub fn create_inclusion_proof_input(
     blob: &Blob,
     header: &ExtendedHeader,
     nmt_multiproofs: Vec<NamespaceProof>,
@@ -95,4 +95,4 @@ pub fn create_inclusion_proof_input(
         row_roots: eds_row_roots[first_row_index as usize..=last_row_index as usize].to_vec(),
         data_root: header.header.data_hash.unwrap().encode_vec(),
     })
-}
+}*/
