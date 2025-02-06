@@ -99,9 +99,9 @@ First, some tooling is required:
 1. Protocol Buffers (Protobuf) compiler - [official examples](https://github.com/hyperium/tonic/tree/master/examples#examples) contain install instructions
 1. (Optional) Just - a modern alternative to `make` [installed](https://just.systems/man/en/packages.html)
 
-## Quick Start
+Then:
 
-1. Clone the repo:
+1. Clone the repo
 
    ```sh
    git clone https://github.com/your-repo-name/eq-service.git
@@ -115,7 +115,7 @@ First, some tooling is required:
 
 1. [Configure required env variables](#operate)
 
-1. Build and run the service:
+1. Build and run the service
    ```sh
    # NOT optimized, default includes debug logs printed
    just run-debug
@@ -154,18 +154,13 @@ flowchart TB
     style jobs fill:#888
 ```
 
-### Celestia Data Availability (DA)
-
-The service interacts with a Celestia Node using gRPC to:
+The service interacts with a Celestia Data Availability (DA) Node to:
 
 - Fetch blob data.
 - Get headers.
 - Retrieve Merkle tree proofs for blobs.
 
-### Zero-Knowledge Proofs (ZKPs)
-
-The service uses [Succinct's prover network](https://docs.succinct.xyz/docs/generating-proofs/prover-network) as a provider to generate ZKPs of data existing on Celestia.
-
+The service uses [Succinct's prover network](https://docs.succinct.xyz/docs/generating-proofs/prover-network) as a provider to generate Zero-Knowledge Proofs (ZKPs) of data existing on Celestia.
 See the [ZKP program](./program-keccak-inclusion/src/main.rs) for details on what is proven.
 
 ## License
