@@ -307,7 +307,7 @@ impl Inclusion for InclusionServiceArc {
 
 impl InclusionService {
     /// A worker that receives [Job]s by a channel and drives them to completion.
-    /// 
+    ///
     /// `Job`s are complete stepwise with a [JobStatus] that is recorded in a
     /// queue database, with work to progress each status to towards completion async.
     /// Once a step is completed, `JobStatus` is recorded into the queue database that
@@ -617,7 +617,7 @@ impl InclusionService {
                 if let Some(down) = e.downcast_ref::<SP1NetworkError>() {
                     return self.handle_zk_client_error(down, job, job_key);
                 }
-                InclusionServiceError::InternalError(e.to_string())
+                InclusionServiceError::ZkClientError(format!("Unhandled Error: {e} PLEASE REPORT"))
             })?
             .into();
 
