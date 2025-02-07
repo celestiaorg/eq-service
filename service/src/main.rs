@@ -68,7 +68,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
-            service.clone().get_da_client().await;
+            let _ = service.clone().get_da_client().await.map_err(|_| {
+                error!("PANIC cannot connect to DA client! Exiting!");
+                // TODO shutdown
+                std::process::exit(1);
+            });
             info!("DA client ready!");
         }
         // TODO: crash whole program if this fails

@@ -105,7 +105,7 @@ impl InclusionService {
                 match job_status {
                     JobStatus::DataAvailabilityPending => {
                         let da_client_handle = self.get_da_client().await.clone();
-                        self.get_zk_proof_input_from_da(&job, &job_key, da_client_handle)
+                        self.get_zk_proof_input_from_da(&job, &job_key, da_client_handle?)
                             .await?;
                         debug!("DA data -> zk input ready");
                     }
@@ -275,6 +275,17 @@ impl InclusionService {
                         "header: given height is from the future".to_string(),
                     );
                     job_status = JobStatus::Failed(e.clone(), None);
+                } else if error_object
+                    .message()
+                    .starts_with("header: syncing in progress")
+                {
+                    e = InclusionServiceError::DaClientError(
+                        "header: syncing in progress. Blob *may* exist on the network.".to_string(),
+                    );
+                    job_status = JobStatus::Failed(
+                        e.clone(),
+                        Some(JobStatus::DataAvailabilityPending.into()),
+                    );
                 } else if error_object.message().starts_with("blob: not found") {
                     e = InclusionServiceError::DaClientError(
                         "blob: not found. Likely incorrect request inputs.".to_string(),
@@ -474,22 +485,22 @@ impl InclusionService {
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?)
     }
 
-    pub async fn get_da_client(&self) -> Arc<CelestiaJSONClient> {
+    pub async fn get_da_client(&self) -> Result<Arc<CelestiaJSONClient>, InclusionServiceError> {
         let handle = self
             .da_client_handle
-            .get_or_init(|| async {
+            .get_or_try_init(|| async {
                 debug!("Building DA client");
                 let client = CelestiaJSONClient::new(
                     self.config.da_node_ws.as_str(),
                     self.config.da_node_token.as_str().into(),
                 )
                 .await
-                .expect("Failed to build Celestia Client RPC");
-                Arc::new(client)
+                .map_err(|e| InclusionServiceError::DaClientError(e.to_string()))?;
+                Ok(Arc::new(client))
             })
             .await
-            .clone();
-        handle
+            .map_err(|e: InclusionServiceError| e)?;
+        Ok(handle.clone())
     }
 
     pub async fn get_zk_client_remote(&self) -> Arc<SP1NetworkProver> {
