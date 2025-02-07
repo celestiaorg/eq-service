@@ -44,7 +44,7 @@ pub struct InclusionService {
     pub config_db: SledTree,
     pub queue_db: SledTree,
     pub finished_db: SledTree,
-    pub job_sender: mpsc::UnboundedSender<Job>,
+    pub job_sender: mpsc::UnboundedSender<Option<Job>>,
 }
 
 impl InclusionService {
@@ -55,7 +55,7 @@ impl InclusionService {
         config_db: SledTree,
         queue_db: SledTree,
         finished_db: SledTree,
-        job_sender: mpsc::UnboundedSender<Job>,
+        job_sender: mpsc::UnboundedSender<Option<Job>>,
     ) -> Self {
         InclusionService {
             config,
@@ -84,15 +84,22 @@ impl InclusionService {
     ///
     /// When a successful or failed state is arrived at,
     /// the job is atomically removed from the queue and added to a results database.
-    pub async fn job_worker(self: Arc<Self>, mut job_receiver: mpsc::UnboundedReceiver<Job>) {
+    pub async fn job_worker(self: Arc<Self>, mut job_receiver: mpsc::UnboundedReceiver<Option<Job>>) {
         debug!("Job worker started");
-        while let Some(job) = job_receiver.recv().await {
+        while let Some(Some(job)) = job_receiver.recv().await {
             let service = self.clone();
             tokio::spawn(async move {
                 debug!("Job worker received {job:?}",);
                 let _ = service.prove(job).await; //Don't return with "?", we run keep looping
             });
         }
+
+        info!("Shutting down");
+        let _ = self.queue_db.flush();
+        let _ = self.finished_db.flush();
+        info!("Cleanup complete");
+
+        std::process::exit(0);
     }
 
     /// The main service task: produce a proof based on a [Job] requested.
@@ -470,7 +477,7 @@ impl InclusionService {
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
         Ok(self
             .job_sender
-            .send(job)
+            .send(Some(job))
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?)
     }
 
@@ -503,5 +510,10 @@ impl InclusionService {
             .await
             .clone();
         handle
+    }
+    
+    pub fn shutdown(&self) {
+        info!("Terminating worker,finishing prexisting jobs");
+        let _ = self.job_sender.send(None); // Break loop in `job_worker`
     }
 }

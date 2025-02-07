@@ -156,7 +156,7 @@ impl Inclusion for InclusionServiceArc {
 
         self.0
             .job_sender
-            .send(job.clone())
+            .send(Some(job.clone()))
             .map_err(|e| Status::internal(e.to_string()))?;
 
         Ok(Response::new(GetKeccakInclusionResponse {

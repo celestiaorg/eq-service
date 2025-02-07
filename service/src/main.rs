@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_db = db.open_tree("config")?;
 
     info!("Building clients and service setup");
-    let (job_sender, job_receiver) = mpsc::unbounded_channel::<Job>();
+    let (job_sender, job_receiver) = mpsc::unbounded_channel::<Option<Job>>();
     let inclusion_service = Arc::new(InclusionService::new(
         InclusionServiceConfig {
             da_node_token,
@@ -62,6 +62,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Starting service");
     tokio::spawn({
         let service = inclusion_service.clone();
+        async move { wait_shutdown_signals().await; service.shutdown();}
+    });
+
+    debug!("Starting service");
+    tokio::spawn({
+        let service = inclusion_service.clone();
         async move { service.job_worker(job_receiver).await }
     });
 
@@ -85,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     | JobStatus::DataAvailable(_)
                     | JobStatus::ZkProofPending(_) => {
                         let _ = job_sender
-                            .send(job)
+                            .send(Some(job))
                             .map_err(|e| error!("Failed to send existing job to worker: {}", e));
                     }
                     _ => {
@@ -97,7 +103,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     info!("Starting gRPC Service");
-
     Server::builder()
         .add_service(InclusionServer::new(InclusionServiceArc(
             inclusion_service.clone(),
