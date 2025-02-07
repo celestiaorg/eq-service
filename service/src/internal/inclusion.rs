@@ -84,7 +84,10 @@ impl InclusionService {
     ///
     /// When a successful or failed state is arrived at,
     /// the job is atomically removed from the queue and added to a results database.
-    pub async fn job_worker(self: Arc<Self>, mut job_receiver: mpsc::UnboundedReceiver<Option<Job>>) {
+    pub async fn job_worker(
+        self: Arc<Self>,
+        mut job_receiver: mpsc::UnboundedReceiver<Option<Job>>,
+    ) {
         debug!("Job worker started");
         while let Some(Some(job)) = job_receiver.recv().await {
             let service = self.clone();
@@ -511,7 +514,7 @@ impl InclusionService {
             .clone();
         handle
     }
-    
+
     pub fn shutdown(&self) {
         info!("Terminating worker,finishing prexisting jobs");
         let _ = self.job_sender.send(None); // Break loop in `job_worker`

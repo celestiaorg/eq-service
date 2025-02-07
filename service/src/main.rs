@@ -62,7 +62,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Starting service");
     tokio::spawn({
         let service = inclusion_service.clone();
-        async move { wait_shutdown_signals().await; service.shutdown();}
+        async move {
+            wait_shutdown_signals().await;
+            service.shutdown();
+        }
     });
 
     debug!("Starting service");
