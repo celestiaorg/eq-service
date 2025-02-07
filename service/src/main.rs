@@ -84,22 +84,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     debug!("Restarting unfinished jobs");
-    for entry_result in queue_db.iter() {
-        if let Ok((job_key, queue_data)) = entry_result {
-            let job: Job = bincode::deserialize(&job_key).unwrap();
-            debug!("Sending {job:?}");
-            if let Ok(job_status) = bincode::deserialize::<JobStatus>(&queue_data) {
-                match job_status {
-                    JobStatus::DataAvailabilityPending
-                    | JobStatus::DataAvailable(_)
-                    | JobStatus::ZkProofPending(_) => {
-                        let _ = job_sender
-                            .send(Some(job))
-                            .map_err(|e| error!("Failed to send existing job to worker: {}", e));
-                    }
-                    _ => {
-                        error!("Unexpected job in queue! DB is in invalid state!")
-                    }
+    for (job_key, queue_data) in queue_db.iter().flatten() {
+        let job: Job = bincode::deserialize(&job_key).unwrap();
+        debug!("Sending {job:?}");
+        if let Ok(job_status) = bincode::deserialize::<JobStatus>(&queue_data) {
+            match job_status {
+                JobStatus::DataAvailabilityPending
+                | JobStatus::DataAvailable(_)
+                | JobStatus::ZkProofPending(_) => {
+                    let _ = job_sender
+                        .send(Some(job))
+                        .map_err(|e| error!("Failed to send existing job to worker: {}", e));
+                }
+                _ => {
+                    error!("Unexpected job in queue! DB is in invalid state!")
                 }
             }
         }

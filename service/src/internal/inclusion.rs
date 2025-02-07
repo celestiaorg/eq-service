@@ -161,9 +161,7 @@ impl InclusionService {
                 _ => error!("Queue has INVALID status! Finished jobs stuck in queue!"),
             }
         };
-        Ok(
-            (),
-        )
+        Ok(())
     }
 
     /// Given a SHA3 hash of a ZK program, get the require setup.
@@ -223,7 +221,7 @@ impl InclusionService {
     async fn get_zk_proof_input_from_da(
         &self,
         job: &Job,
-        job_key: &Vec<u8>,
+        job_key: &[u8],
         client: Arc<CelestiaJSONClient>,
     ) -> Result<(), InclusionServiceError> {
         debug!("Preparing request to Celestia");
@@ -253,7 +251,9 @@ impl InclusionService {
         }
 
         error!("Failed to get proof from Celestia - This should be unreachable!");
-        Err(InclusionServiceError::DaClientError("Could not obtain NMT proof of data inclusion. PLEASE REPORT!".to_string()))
+        Err(InclusionServiceError::DaClientError(
+            "Could not obtain NMT proof of data inclusion. PLEASE REPORT!".to_string(),
+        ))
     }
 
     /// Helper function to handle error from a [jsonrpsee] based DA client.
@@ -263,7 +263,7 @@ impl InclusionService {
         &self,
         da_client_error: JsonRpcError,
         job: &Job,
-        job_key: &Vec<u8>,
+        job_key: &[u8],
     ) -> InclusionServiceError {
         error!("Celestia Client error: {da_client_error}");
         let (e, job_status);
@@ -323,7 +323,7 @@ impl InclusionService {
         &self,
         zk_client_error: &SP1NetworkError,
         job: &Job,
-        job_key: &Vec<u8>,
+        job_key: &[u8],
     ) -> InclusionServiceError {
         error!("SP1 Client error: {zk_client_error}");
         let (e, job_status);
@@ -374,7 +374,7 @@ impl InclusionService {
         program_id: &SuccNetProgramId,
         proof_input: &KeccakInclusionToDataRootProofInput,
         job: &Job,
-        job_key: &Vec<u8>,
+        job_key: &[u8],
     ) -> Result<SuccNetJobId, InclusionServiceError> {
         debug!("Preparing prover network request and starting proving");
         let zk_client_handle = self.get_zk_client_remote().await;
@@ -405,7 +405,7 @@ impl InclusionService {
     /// Await a proof request from Succinct's prover network
     async fn wait_for_zk_proof(
         &self,
-        job_key: &Vec<u8>,
+        job_key: &[u8],
         request_id: SuccNetJobId,
     ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
         debug!("Waiting for proof from prover network");
@@ -439,15 +439,15 @@ impl InclusionService {
     /// (but this is not enforced or checked at this time)
     fn finalize_job(
         &self,
-        job_key: &Vec<u8>,
+        job_key: &[u8],
         job_status: JobStatus,
     ) -> Result<(), InclusionServiceError> {
         // TODO: do we want to do a status check here? To prevent accidentally getting into a DB invalid state
         (&self.queue_db, &self.finished_db)
             .transaction(|(queue_tx, finished_tx)| {
-                queue_tx.remove(job_key.clone())?;
+                queue_tx.remove(job_key)?;
                 finished_tx.insert(
-                    job_key.clone(),
+                    job_key,
                     bincode::serialize(&job_status).expect("Always given serializable job status"),
                 )?;
                 Ok::<(), sled::transaction::ConflictableTransactionError<InclusionServiceError>>(())
@@ -477,16 +477,13 @@ impl InclusionService {
                 Ok::<(), sled::transaction::ConflictableTransactionError<InclusionServiceError>>(())
             })
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
-        self
-            .job_sender
+        self.job_sender
             .send(Some(job))
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))
     }
 
     pub async fn get_da_client(&self) -> Arc<CelestiaJSONClient> {
-        
-        self
-            .da_client_handle
+        self.da_client_handle
             .get_or_init(|| async {
                 debug!("Building DA client");
                 let client = CelestiaJSONClient::new(
@@ -502,9 +499,7 @@ impl InclusionService {
     }
 
     pub async fn get_zk_client_remote(&self) -> Arc<SP1NetworkProver> {
-        
-        self
-            .zk_client_handle
+        self.zk_client_handle
             .get_or_init(|| async {
                 debug!("Building ZK client");
                 let client = sp1_sdk::ProverClient::builder().network().build();
