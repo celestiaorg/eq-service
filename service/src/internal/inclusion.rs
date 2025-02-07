@@ -258,11 +258,12 @@ impl InclusionService {
     ) -> InclusionServiceError {
         error!("Celestia Client error: {da_client_error}");
         let (e, job_status);
+        let call_err = "DA Call Error: ".to_string() + &da_client_error.to_string();
         match da_client_error {
             JsonRpcError::Call(error_object) => {
                 // TODO: make this handle errors much better! JSON stringiness is a problem!
                 if error_object.message().starts_with("header: not found") {
-                    e = InclusionServiceError::DaClientError("header: not found. Likely DA Node is not properly synced, and blob does exists on the network. PLEASE REPORT!".to_string());
+                    e = InclusionServiceError::DaClientError(format!("{call_err} - Likely DA Node is not properly synced, and blob does exists on the network. PLEASE REPORT!"));
                     job_status = JobStatus::Failed(
                         e.clone(),
                         Some(JobStatus::DataAvailabilityPending.into()),
@@ -271,35 +272,35 @@ impl InclusionService {
                     .message()
                     .starts_with("header: given height is from the future")
                 {
-                    e = InclusionServiceError::DaClientError(
-                        "header: given height is from the future".to_string(),
-                    );
+                    e = InclusionServiceError::DaClientError(format!("{call_err}"));
                     job_status = JobStatus::Failed(e.clone(), None);
                 } else if error_object
                     .message()
                     .starts_with("header: syncing in progress")
                 {
-                    e = InclusionServiceError::DaClientError(
-                        "header: syncing in progress. Blob *may* exist on the network.".to_string(),
-                    );
+                    e = InclusionServiceError::DaClientError(format!(
+                        "{call_err} - Blob *may* exist on the network."
+                    ));
                     job_status = JobStatus::Failed(
                         e.clone(),
                         Some(JobStatus::DataAvailabilityPending.into()),
                     );
                 } else if error_object.message().starts_with("blob: not found") {
-                    e = InclusionServiceError::DaClientError(
-                        "blob: not found. Likely incorrect request inputs.".to_string(),
-                    );
+                    e = InclusionServiceError::DaClientError(format!(
+                        "{call_err} - Likely incorrect request inputs."
+                    ));
                     job_status = JobStatus::Failed(e.clone(), None);
                 } else {
-                    e = InclusionServiceError::DaClientError(
-                        "UNKNOWN DA client error. PLEASE REPORT!".to_string(),
-                    );
+                    e = InclusionServiceError::DaClientError(format!(
+                        "{call_err} - UNKNOWN DA client error. PLEASE REPORT!"
+                    ));
                     job_status = JobStatus::Failed(e.clone(), None);
                 }
             }
-            JsonRpcError::RequestTimeout => {
-                e = InclusionServiceError::DaClientError("DA Node RequestTimeout".to_string());
+            JsonRpcError::RequestTimeout
+            | JsonRpcError::Transport(_)
+            | JsonRpcError::RestartNeeded(_) => {
+                e = InclusionServiceError::DaClientError(format!("{da_client_error}"));
                 job_status =
                     JobStatus::Failed(e.clone(), Some(JobStatus::DataAvailabilityPending.into()));
             }
