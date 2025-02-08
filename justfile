@@ -45,11 +45,11 @@ _pre-run:
         exit 1
     fi
 
-# Run in release mode, with optimizations
+# Run in release mode, with optimizations AND debug logs
 run-release *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     source .env
-    cargo r -r -- {{ FLAGS }}
+    RUST_LOG=eq_service=debug cargo r -r -- {{ FLAGS }}
 
 # Run in debug mode, with extra pre-checks, no optimizations
 run-debug *FLAGS: _pre-build _pre-run

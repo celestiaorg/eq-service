@@ -114,7 +114,7 @@ impl InclusionService {
             match job_status {
                 JobStatus::DataAvailabilityPending => {
                     let da_client_handle = self.get_da_client().await.clone();
-                    self.get_zk_proof_input_from_da(&job, &job_key, da_client_handle)
+                    self.get_zk_proof_input_from_da(&job, &job_key, da_client_handle?)
                         .await?;
                     debug!("DA data -> zk input ready");
                 }
@@ -267,11 +267,12 @@ impl InclusionService {
     ) -> InclusionServiceError {
         error!("Celestia Client error: {da_client_error}");
         let (e, job_status);
+        let call_err = "DA Call Error: ".to_string() + &da_client_error.to_string();
         match da_client_error {
             JsonRpcError::Call(error_object) => {
                 // TODO: make this handle errors much better! JSON stringiness is a problem!
                 if error_object.message().starts_with("header: not found") {
-                    e = InclusionServiceError::DaClientError("header: not found. Likely DA Node is not properly synced, and blob does exists on the network. PLEASE REPORT!".to_string());
+                    e = InclusionServiceError::DaClientError(format!("{call_err} - Likely DA Node is not properly synced, and blob does exists on the network. PLEASE REPORT!"));
                     job_status = JobStatus::Failed(
                         e.clone(),
                         Some(JobStatus::DataAvailabilityPending.into()),
@@ -280,24 +281,35 @@ impl InclusionService {
                     .message()
                     .starts_with("header: given height is from the future")
                 {
-                    e = InclusionServiceError::DaClientError(
-                        "header: given height is from the future".to_string(),
-                    );
+                    e = InclusionServiceError::DaClientError(format!("{call_err}"));
                     job_status = JobStatus::Failed(e.clone(), None);
-                } else if error_object.message().starts_with("blob: not found") {
-                    e = InclusionServiceError::DaClientError(
-                        "blob: not found. Likely incorrect request inputs.".to_string(),
+                } else if error_object
+                    .message()
+                    .starts_with("header: syncing in progress")
+                {
+                    e = InclusionServiceError::DaClientError(format!(
+                        "{call_err} - Blob *may* exist on the network."
+                    ));
+                    job_status = JobStatus::Failed(
+                        e.clone(),
+                        Some(JobStatus::DataAvailabilityPending.into()),
                     );
+                } else if error_object.message().starts_with("blob: not found") {
+                    e = InclusionServiceError::DaClientError(format!(
+                        "{call_err} - Likely incorrect request inputs."
+                    ));
                     job_status = JobStatus::Failed(e.clone(), None);
                 } else {
-                    e = InclusionServiceError::DaClientError(
-                        "UNKNOWN DA client error. PLEASE REPORT!".to_string(),
-                    );
+                    e = InclusionServiceError::DaClientError(format!(
+                        "{call_err} - UNKNOWN DA client error. PLEASE REPORT!"
+                    ));
                     job_status = JobStatus::Failed(e.clone(), None);
                 }
             }
-            JsonRpcError::RequestTimeout => {
-                e = InclusionServiceError::DaClientError("DA Node RequestTimeout".to_string());
+            JsonRpcError::RequestTimeout
+            | JsonRpcError::Transport(_)
+            | JsonRpcError::RestartNeeded(_) => {
+                e = InclusionServiceError::DaClientError(format!("{da_client_error}"));
                 job_status =
                     JobStatus::Failed(e.clone(), Some(JobStatus::DataAvailabilityPending.into()));
             }
@@ -482,20 +494,22 @@ impl InclusionService {
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))
     }
 
-    pub async fn get_da_client(&self) -> Arc<CelestiaJSONClient> {
-        self.da_client_handle
-            .get_or_init(|| async {
+    pub async fn get_da_client(&self) -> Result<Arc<CelestiaJSONClient>, InclusionServiceError> {
+        let handle = self
+            .da_client_handle
+            .get_or_try_init(|| async {
                 debug!("Building DA client");
                 let client = CelestiaJSONClient::new(
                     self.config.da_node_ws.as_str(),
                     self.config.da_node_token.as_str().into(),
                 )
                 .await
-                .expect("Failed to build Celestia Client RPC");
-                Arc::new(client)
+                .map_err(|e| InclusionServiceError::DaClientError(e.to_string()))?;
+                Ok(Arc::new(client))
             })
             .await
-            .clone()
+            .map_err(|e: InclusionServiceError| e)?;
+        Ok(handle.clone())
     }
 
     pub async fn get_zk_client_remote(&self) -> Arc<SP1NetworkProver> {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use tonic::{Request, Response, Status};
 
 use eq_common::eqs::inclusion_server::Inclusion;
@@ -48,11 +48,11 @@ impl Inclusion for InclusionServiceArc {
             .get(&job_key)
             .map_err(|e| Status::internal(e.to_string()))?
         {
-            debug!("Job is finished, returning status");
             let job_status: JobStatus =
                 bincode::deserialize(&proof_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
                 JobStatus::ZkProofFinished(proof) => {
+                    debug!("Job finished, returning proof");
                     return Ok(Response::new(GetKeccakInclusionResponse {
                         status: ResponseStatus::ZkpFinished as i32,
                         response_value: Some(ResponseValue::Proof(
@@ -64,6 +64,7 @@ impl Inclusion for InclusionServiceArc {
                 JobStatus::Failed(error, maybe_status) => {
                     match maybe_status {
                         None => {
+                            warn!("Job is PERMANENT FAILURE, returning status");
                             return Ok(Response::new(GetKeccakInclusionResponse {
                                 status: ResponseStatus::PermanentFailure as i32,
                                 response_value: Some(ResponseValue::ErrorMessage(format!(
@@ -72,6 +73,7 @@ impl Inclusion for InclusionServiceArc {
                             }));
                         }
                         Some(retry_status) => {
+                            warn!("Job is Retryable Failure, returning status & retrying");
                             // We retry errors on each call to the gRPC
                             // for a specific [Job] by seding to the queue
                             match self.0.send_job_with_new_status(job_key, *retry_status, job) {
