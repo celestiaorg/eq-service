@@ -1,6 +1,6 @@
 use alloy::sol;
 use celestia_types::nmt::{Namespace, NamespaceProof};
-use celestia_types::{ShareProof, Share};
+use celestia_types::{ShareProof, Share, RowProof};
 use nmt_rs::{simple_merkle::proof::Proof, NamespacedHash, TmSha2Hasher};
 use serde::{Deserialize, Serialize};
 
@@ -30,8 +30,11 @@ pub mod eqs {
 
 #[derive(Serialize, Deserialize)]
 pub struct KeccakInclusionToDataRootProofInput {
-    pub shares: Vec<Share>,
-    pub proof: ShareProof,
+    pub data: Vec<u8>,
+    pub namespace_id: Namespace,
+    pub share_proofs: Vec<NamespaceProof>,
+    pub row_proof: RowProof,
+    pub data_root: [u8; 32],
 }
 
 /// Expecting bytes:

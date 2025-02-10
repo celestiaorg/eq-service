@@ -62,8 +62,11 @@ async fn main() {
         .expect("Failed verifying proof");
 
     let proof_input = KeccakInclusionToDataRootProofInput {
-        shares: range_response.shares,
-        proof: range_response.proof,
+        data: blob.data,
+        namespace_id: namespace,
+        share_proofs: range_response.proof.share_proofs,
+        row_proof: range_response.proof.row_proof,
+        data_root: header.dah.hash().as_bytes().try_into().unwrap(),
     };
 
     let json = serde_json::to_string_pretty(&proof_input).expect("Failed serializing proof input to JSON");
