@@ -660,9 +660,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.85"
+version = "0.1.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f934833b4b7233644e5848f235df3f57ed8c80f1528a26c3dfa13d2147fa056"
+checksum = "644dd749086bf3771a2fbc5f256fdb982d53f011c7d5d560304eafeecebce79d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1949,6 +1949,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "eq-sdk"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "celestia-types",
+ "eq-common",
+ "log",
+ "serde",
+ "tokio",
+ "tonic 0.11.0",
+]
+
+[[package]]
 name = "eq_service"
 version = "0.1.0"
 dependencies = [
@@ -1958,6 +1971,7 @@ dependencies = [
  "celestia-types",
  "env_logger",
  "eq-common",
+ "eq-sdk",
  "hex",
  "jsonrpsee",
  "log",
@@ -7279,6 +7293,24 @@ dependencies = [
  "sha2 0.10.8",
  "sha3",
  "subtle",
+]
+
+[[package]]
+name = "zksync-interface"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "zksync_da_client",
+]
+
+[[package]]
+name = "zksync_da_client"
+version = "26.2.1-non-semver-compat"
+source = "git+https://github.com/matter-labs/zksync-era?rev=03ebc7cdc632e9dd209dab3ad4d79fe7eb3d0fc1#03ebc7cdc632e9dd209dab3ad4d79fe7eb3d0fc1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "serde",
 ]
 
 [[patch.unused]]

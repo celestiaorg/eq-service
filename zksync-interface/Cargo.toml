@@ -1,0 +1,8 @@
+[package]
+name = "zksync-interface"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.86"
+zksync_da_clients = { git = "https://github.com/matter-labs/zksync-era", rev = "03ebc7cdc632e9dd209dab3ad4d79fe7eb3d0fc1", package = "zksync_da_client" }

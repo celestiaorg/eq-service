@@ -1,0 +1,13 @@
+[package]
+name = "eq-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eq-common = {path = "../common"}
+tonic = {workspace = true, features = ["transport"]}
+serde = { workspace = true, features = ["derive"] }
+celestia-types = {workspace = true}
+base64 = {workspace = true}
+tokio = {workspace = true}
+log = {workspace = true}
