@@ -2,7 +2,7 @@ use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient};
 use eq_common::{
-    create_inclusion_proof_input, InclusionServiceError, KeccakInclusionToDataRootProofInput,
+    InclusionServiceError, KeccakInclusionToDataRootProofInput,
 };
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};

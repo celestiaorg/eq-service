@@ -1,11 +1,11 @@
 #![doc = include_str!("../README.md")]
 
 use base64::Engine;
-use celestia_rpc::{BlobClient, Client, HeaderClient};
+use celestia_rpc::{BlobClient, Client, HeaderClient, ShareClient};
 use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
 use clap::{command, Parser};
-use eq_common::create_inclusion_proof_input;
+use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -50,17 +50,26 @@ async fn main() {
         .await
         .expect("Failed getting blob");
 
-    println!("getting nmt multiproofs...");
-    let nmt_multiproofs = client
-        .blob_get_proof(args.height, namespace, commitment)
+    println!("shares len {:?}, starting index {:?}", blob.shares_len(), blob.index);
+
+    let index = blob.index.unwrap();
+    let range_response = client
+        .share_get_range(&header, index, index + blob.shares_len() as u64)
         .await
-        .expect("Failed getting nmt multiproofs");
+        .expect("Failed getting shares");
 
-    let input = create_inclusion_proof_input(&blob, &header, nmt_multiproofs)
-        .expect("Failed creating inclusion proof input");
+    range_response.proof.verify(header.dah.hash())
+        .expect("Failed verifying proof");
 
-    let json =
-        serde_json::to_string_pretty(&input).expect("Failed serializing proof input to JSON");
+    let proof_input = KeccakInclusionToDataRootProofInput {
+        data: blob.data,
+        namespace_id: namespace,
+        share_proofs: range_response.proof.share_proofs,
+        row_proof: range_response.proof.row_proof,
+        data_root: header.dah.hash().as_bytes().try_into().unwrap(),
+    };
+
+    let json = serde_json::to_string_pretty(&proof_input).expect("Failed serializing proof input to JSON");
 
     std::fs::write("proof_input.json", json).expect("Failed writing proof input to file");
 
