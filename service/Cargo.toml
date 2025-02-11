@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 eq-common = {path = "../common"}
+eq-sdk = {path = "../sdk"}
 serde = { workspace = true, features = ["derive"] }
 bincode = {workspace = true}
 celestia-types = {workspace = true}
