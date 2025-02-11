@@ -56,17 +56,22 @@ COPY --from=deps /usr/local/cargo /usr/local/cargo
 COPY . .
 
 # Build ZK Program ELF using SP1 toolchain.
-RUN /root/.sp1/bin/cargo-prove prove build -p eq-program-keccak-inclusion
+# Use BuildKit 
+RUN --mount=type=cache,id=target_cache,target=/app/target \
+    /root/.sp1/bin/cargo-prove prove build -p eq-program-keccak-inclusion
 
 # Finally, compile the project in release mode.
-RUN cargo build --release
+RUN --mount=type=cache,id=target_cache,target=/app/target \
+    cargo build --release && \
+    cp /app/target/release/eq_service /app/eq_service
 
 ####################################################################################################
 ## Final stage: Prepare the runtime image
 ####################################################################################################
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
+# We use bookwork as we need glibc
 
-COPY --from=builder /app/target/release/eq_service ./
+COPY --from=builder /app/eq_service ./
 
 EXPOSE 50051
 
