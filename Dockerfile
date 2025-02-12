@@ -73,6 +73,4 @@ FROM debian:bookworm-slim
 
 COPY --from=builder /app/eq_service ./
 
-EXPOSE 50051
-
 CMD ["/eq_service"]
