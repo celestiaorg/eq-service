@@ -70,6 +70,8 @@ RUN --mount=type=cache,id=target_cache,target=/app/target \
 ####################################################################################################
 FROM debian:bookworm-slim
 # We use bookwork as we need glibc
+# We must have libcurl for the SP1 client to function!
+RUN apt update && apt install -y libcurl4 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/eq_service ./
 
