@@ -6,6 +6,9 @@ pub enum InclusionServiceError {
     #[error("Blob index not found")]
     MissingBlobIndex,
 
+    #[error("Inclusion proof sanity check failed")]
+    FailedShareRangeProofSanityCheck,
+
     #[error("Failed to convert keccak hash to array")]
     KeccakHashConversion,
 
