@@ -23,20 +23,16 @@ COPY Cargo.lock Cargo.toml ./
 COPY service/Cargo.toml ./service/
 COPY common/Cargo.toml ./common/
 COPY sdk/Cargo.toml ./sdk/
-COPY zksync-interface/Cargo.toml ./zksync-interface/
 COPY runner-keccak-inclusion/Cargo.toml ./runner-keccak-inclusion/
 COPY blob-tool/Cargo.toml ./blob-tool/
-COPY eqs-client/Cargo.toml ./eqs-client/
 COPY program-keccak-inclusion/Cargo.toml ./program-keccak-inclusion/
 
 # Create dummy targets for each workspace member so that cargo fetch can succeed.
 RUN mkdir -p service/src && echo 'fn main() {}' > service/src/main.rs && \
     mkdir -p common/src && echo 'fn main() {}' > common/src/lib.rs && \
     mkdir -p sdk/src && echo 'fn main() {}' > sdk/src/lib.rs && \
-    mkdir -p zksync-interface/src && echo 'fn main() {}' > zksync-interface/src/main.rs && \
     mkdir -p runner-keccak-inclusion/src && echo 'fn main() {}' > runner-keccak-inclusion/src/main.rs && \
     mkdir -p blob-tool/src && echo 'fn main() {}' > blob-tool/src/main.rs && \
-    mkdir -p eqs-client/src && echo 'fn main() {}' > eqs-client/src/main.rs && \
     mkdir -p program-keccak-inclusion/src && echo 'fn main() {}' > program-keccak-inclusion/src/main.rs
 
 # Run cargo fetch so that dependency downloads are cached in the image.

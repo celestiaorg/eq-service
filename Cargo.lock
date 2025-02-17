@@ -7291,24 +7291,6 @@ dependencies = [
  "subtle",
 ]
 
-[[package]]
-name = "zksync-interface"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "zksync_da_client",
-]
-
-[[package]]
-name = "zksync_da_client"
-version = "26.2.1-non-semver-compat"
-source = "git+https://github.com/matter-labs/zksync-era?rev=03ebc7cdc632e9dd209dab3ad4d79fe7eb3d0fc1#03ebc7cdc632e9dd209dab3ad4d79fe7eb3d0fc1"
-dependencies = [
- "anyhow",
- "async-trait",
- "serde",
-]
-
 [[patch.unused]]
 name = "curve25519-dalek"
 version = "4.1.3"
