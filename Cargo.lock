@@ -963,6 +963,7 @@ dependencies = [
  "eq-common",
  "hex",
  "serde_json",
+ "sha3",
  "tokio",
 ]
 

@@ -6,6 +6,7 @@ use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
 use clap::{command, Parser};
 use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
+use sha3::{Digest, Keccak256};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -61,12 +62,18 @@ async fn main() {
     range_response.proof.verify(header.dah.hash())
         .expect("Failed verifying proof");
 
+    let keccak_hash: [u8; 32] = Keccak256::new()
+        .chain_update(&blob.data)
+        .finalize()
+        .into();
+
     let proof_input = KeccakInclusionToDataRootProofInput {
         data: blob.data,
         namespace_id: namespace,
         share_proofs: range_response.proof.share_proofs,
         row_proof: range_response.proof.row_proof,
         data_root: header.dah.hash().as_bytes().try_into().unwrap(),
+        keccak_hash: keccak_hash,
     };
 
     let json = serde_json::to_string_pretty(&proof_input).expect("Failed serializing proof input to JSON");

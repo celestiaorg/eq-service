@@ -5,18 +5,12 @@ sp1_zkvm::entrypoint!(main);
 use alloy::{primitives::B256, sol_types::SolType};
 use celestia_types::{
     blob::Blob,
-    nmt::{MerkleHash, NamespacedHashExt},
     AppVersion,
     hash::Hash,
-    nmt::NamespaceProof,
-    RowProof,
     ShareProof
 };
 use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
-use nmt_rs::TmSha2Hasher;
 use sha3::{Digest, Keccak256};
-/*use tendermint::Hash as TmHash;
-use tendermint_proto::Protobuf;*/
 
 pub fn main() {
     let input: KeccakInclusionToDataRootProofInput = sp1_zkvm::io::read();
@@ -25,7 +19,7 @@ pub fn main() {
     let blob = Blob::new(input.namespace_id, input.data, AppVersion::V3)
         .expect("Failed creating blob");
 
-    let keccak_hash: [u8; 32] = Keccak256::new()
+    let computed_keccak_hash: [u8; 32] = Keccak256::new()
         .chain_update(&blob.data)
         .finalize()
         .into();
@@ -42,12 +36,15 @@ pub fn main() {
         row_proof: input.row_proof,
     };
 
-    //input.proof.verify(data_root_as_hash).expect("Failed verifying proof");
+    rp.verify(data_root_as_hash)
+        .expect("Failed verifying proof");
 
-    //input.
+    if computed_keccak_hash != input.keccak_hash {
+        panic!("Computed keccak hash does not match input keccak hash");
+    }
 
     let output: Vec<u8> = KeccakInclusionToDataRootProofOutput::abi_encode(&(
-        B256::from(keccak_hash),
+        B256::from(computed_keccak_hash),
         B256::from(input.data_root),
     ));
     sp1_zkvm::io::commit_slice(&output);

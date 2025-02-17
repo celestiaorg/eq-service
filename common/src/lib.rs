@@ -35,6 +35,7 @@ pub struct KeccakInclusionToDataRootProofInput {
     pub share_proofs: Vec<NamespaceProof>,
     pub row_proof: RowProof,
     pub data_root: [u8; 32],
+    pub keccak_hash: [u8; 32],
 }
 
 /// Expecting bytes:

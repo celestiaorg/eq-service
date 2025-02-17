@@ -1,6 +1,7 @@
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient};
+use celestia_types::{ShareProof, Share, RowProof};
 use eq_common::{
     InclusionServiceError, KeccakInclusionToDataRootProofInput,
 };
@@ -226,12 +227,15 @@ impl InclusionService {
             .await
             .map_err(|e| self.handle_da_client_error(e, &job, &job_key))?;
 
-        let nmt_multiproofs = client
-            .blob_get_proof(job.height.into(), job.namespace, job.commitment)
-            .await
-            .map_err(|e| self.handle_da_client_error(e, &job, &job_key))?;
-
         debug!("Creating ZK Proof input from Celestia Data");
+        let proof_input = KeccakInclusionToDataRootProofInput {
+            data: blob.data,
+            namespace_id: job.namespace,
+            share_proofs: nmt_multiproofs.share_proofs,
+            row_proof: nmt_multiproofs.row_proof,
+            data_root: header.dah.hash().as_bytes().try_into().unwrap(),
+        };
+
         if let Ok(proof_input) = create_inclusion_proof_input(&blob, &header, nmt_multiproofs) {
             self.send_job_with_new_status(
                 job_key.to_vec(),
