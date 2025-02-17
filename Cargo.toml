@@ -1,5 +1,5 @@
 [workspace]
-members = ["service", "program-keccak-inclusion", "common", "blob-tool", "runner-keccak-inclusion", "eqs-client", "zksync-interface", "sdk"]
+members = ["service", "program-keccak-inclusion", "common", "blob-tool", "runner-keccak-inclusion", "zksync-interface", "sdk"]
 default-members = ["service"]
 resolver = "2"
 

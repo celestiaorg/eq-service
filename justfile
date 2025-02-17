@@ -79,7 +79,7 @@ docker-build:
 # Run a pre-built docker image
 docker-run:
     #!/usr/bin/env bash
-    set -ax  # Auto export vars
+    set -a  # Auto export vars
     source .env
     mkdir -p $EQ_DB_PATH
     podman run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
