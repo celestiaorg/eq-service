@@ -16,14 +16,46 @@ A few key features:
 - Spin up an instance of the service: [Operate](#operate)
 - Build & troubleshoot: [Develop](#develop)
 
+## Architecture
+
+```mermaid
+flowchart TB
+    user@{ shape: circle, label: "End User" } ==>|POST Request Eq. Proof| jobs
+    zkep@{ shape: doc, label: "zkVM Equivalence Program" } --> zkc
+    subgraph eq ["`**Equivalence Service**`"]
+        nmtp@{ shape: lean-r, label: "NMT Proofs" }
+        zkp@{ shape: lean-r, label: "ZK Proofs" }
+        lc[Celestia Light Client] --> nmtp --> jobs
+        nmtp --> zkc
+        zkc[ZK Proof Generation Client] --> zkp --> jobs
+        jobs[Jobs Que & Results Cache] <--> sled
+        sled[(Sled DB)]
+    end
+
+    lc --->|GET NMT Inclusion| cel{Celestia}
+
+    zkc --->|POST Proof Generation| pn{ZK Prover Network}
+    style zkep fill:#66f
+    style jobs fill:#888
+```
+
+The service **_requires_** a connection to:
+
+1. Celestia Data Availability (DA) Node to:
+   - Fetch blob data.
+   - Get headers.
+   - Retrieve Merkle tree proofs for blobs.
+1. [Succinct's prover network](https://docs.succinct.xyz/docs/generating-proofs/prover-network) as a provider to generate Zero-Knowledge Proofs (ZKPs) of data existing on Celestia.
+   _See the [ZKP program](./program-keccak-inclusion/src/main.rs) for details on what is proven._
+
 ## Interact
 
-To interact with the service, clients can use any gRPC client that supports protobuf messages.
+Any gRPC client will do, integrating via the [`eqservice.proto` interface](./common/proto/eqservice.proto)
 
 **The endpoint reports back a status, error, or success of a `Job` linked to identical request fields.**
 Repeated requests will yield status updates and eventually a finalized proof or error status.
 
-Here is an example using the [`grpcurl`](https://github.com/fullstorydev/grpcurl) CLI tool:
+Here are examples using the [`grpcurl`](https://github.com/fullstorydev/grpcurl) CLI tool:
 
 ```sh
 # Acquire the proto
@@ -65,15 +97,9 @@ grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
 
 ## Operate
 
-Required and optional settings are best configured via a `.env` file. See [`example.env`](./example.env) for configurable items.
+Most users will want to pull and run this service via the [container registry](#containerization)
 
-```sh
-cp example.env .env
-
-# edit .env
-
-source .env
-```
+### Requirements
 
 1. A machine to run with a _minimum_ of:
 
@@ -89,6 +115,43 @@ source .env
 
 1. A Celestia Light Node [installed](https://docs.celestia.org/how-to-guides/celestia-node) & [running](https://docs.celestia.org/tutorials/node-tutorial#auth-token) accessible on `localhost`, or elsewhere.
    Alternatively, use [an RPC provider](https://github.com/celestiaorg/awesome-celestia/?tab=readme-ov-file#node-operator-contributions) you trust.
+
+### Configure
+
+Required and optional settings are best configured via a `.env` file. See [`example.env`](./example.env) for configurable items.
+
+```sh
+cp example.env .env
+
+# edit .env
+```
+
+### Containerization
+
+Docker and [Podman](https://podman.io/) is configured in [Dockerfile](./Dockerfile) to build an image with that includes a few caching layers to minimize development time & final image size -> publish where possible. To build and run in a container:
+
+```sh
+# Using just
+just docker-build
+just docker-run
+
+
+# Manually
+
+## Build
+[docker|podman] build -t eq_service .
+
+## Setup
+source .env
+mkdir -p $EQ_DB_PATH
+
+## Run (example)
+[docker|podman] run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
+```
+
+Importantly, the DB should persist, and the container must have access to connect to the DA light client (likely port 26658) and Succinct network ports (HTTPS over 443).
+
+The images are built and published for [releases](https://github.com/celestiaorg/eq-service/releases) and available to pull from here: TODO
 
 ## Develop
 
@@ -129,39 +192,6 @@ There are many other helper scripts exposed in the [justfile](./justfile), get a
 # Print just recipes
 just
 ```
-
-### Architecture
-
-```mermaid
-flowchart TB
-    user@{ shape: circle, label: "End User" } ==>|POST Request Eq. Proof| jobs
-    zkep@{ shape: doc, label: "zkVM Equivalence Program" } --> zkc
-
-    subgraph eq ["`**Equivalence Service**`"]
-        nmtp@{ shape: lean-r, label: "NMT Proofs" }
-        zkp@{ shape: lean-r, label: "ZK Proofs" }
-        lc[Celestia Light Client] --> nmtp --> jobs
-        nmtp --> zkc
-        zkc[ZK Proof Generation Client] --> zkp --> jobs
-        jobs[Jobs Que & Results Cache] <--> sled
-        sled[(Sled DB)]
-    end
-
-    lc --->|GET NMT Inclusion| cel{Celestia}
-
-    zkc --->|POST Proof Generation| pn{ZK Prover Network}
-    style zkep fill:#66f
-    style jobs fill:#888
-```
-
-The service interacts with a Celestia Data Availability (DA) Node to:
-
-- Fetch blob data.
-- Get headers.
-- Retrieve Merkle tree proofs for blobs.
-
-The service uses [Succinct's prover network](https://docs.succinct.xyz/docs/generating-proofs/prover-network) as a provider to generate Zero-Knowledge Proofs (ZKPs) of data existing on Celestia.
-See the [ZKP program](./program-keccak-inclusion/src/main.rs) for details on what is proven.
 
 ## License
 
