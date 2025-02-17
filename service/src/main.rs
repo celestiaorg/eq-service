@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_db = db.open_tree("config")?;
 
     info!("Building clients and service setup");
-    let (job_sender, job_receiver) = mpsc::unbounded_channel::<Job>();
+    let (job_sender, job_receiver) = mpsc::unbounded_channel::<Option<Job>>();
     let inclusion_service = Arc::new(InclusionService::new(
         InclusionServiceConfig {
             da_node_token,
@@ -62,42 +62,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Starting service");
     tokio::spawn({
         let service = inclusion_service.clone();
+        async move {
+            wait_shutdown_signals().await;
+            service.shutdown();
+        }
+    });
+
+    debug!("Starting service");
+    tokio::spawn({
+        let service = inclusion_service.clone();
         async move { service.job_worker(job_receiver).await }
     });
 
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
-            service.clone().get_da_client().await;
+            let _ = service.clone().get_da_client().await.map_err(|_| {
+                error!("PANIC cannot connect to DA client! Exiting!");
+                // TODO shutdown
+                std::process::exit(1);
+            });
             info!("DA client ready!");
         }
         // TODO: crash whole program if this fails
     });
 
     debug!("Restarting unfinished jobs");
-    for entry_result in queue_db.iter() {
-        if let Ok((job_key, queue_data)) = entry_result {
-            let job: Job = bincode::deserialize(&job_key).unwrap();
-            debug!("Sending {job:?}");
-            if let Ok(job_status) = bincode::deserialize::<JobStatus>(&queue_data) {
-                match job_status {
-                    JobStatus::DataAvailabilityPending
-                    | JobStatus::DataAvailable(_)
-                    | JobStatus::ZkProofPending(_) => {
-                        let _ = job_sender
-                            .send(job)
-                            .map_err(|e| error!("Failed to send existing job to worker: {}", e));
-                    }
-                    _ => {
-                        error!("Unexpected job in queue! DB is in invalid state!")
-                    }
+    for (job_key, queue_data) in queue_db.iter().flatten() {
+        let job: Job = bincode::deserialize(&job_key).unwrap();
+        debug!("Sending {job:?}");
+        if let Ok(job_status) = bincode::deserialize::<JobStatus>(&queue_data) {
+            match job_status {
+                JobStatus::DataAvailabilityPending
+                | JobStatus::DataAvailable(_)
+                | JobStatus::ZkProofPending(_) => {
+                    let _ = job_sender
+                        .send(Some(job))
+                        .map_err(|e| error!("Failed to send existing job to worker: {}", e));
+                }
+                _ => {
+                    error!("Unexpected job in queue! DB is in invalid state!")
                 }
             }
         }
     }
 
     info!("Starting gRPC Service");
-
     Server::builder()
         .add_service(InclusionServer::new(InclusionServiceArc(
             inclusion_service.clone(),

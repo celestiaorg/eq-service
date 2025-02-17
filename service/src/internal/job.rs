@@ -32,7 +32,7 @@ impl std::fmt::Debug for Job {
             namespace_string = "Invalid v0 ID".to_string()
         }
         let commitment_string =
-            base64::engine::general_purpose::STANDARD.encode(&self.commitment.hash());
+            base64::engine::general_purpose::STANDARD.encode(self.commitment.hash());
         f.debug_struct("Job")
             .field("height", &self.height.value())
             .field("namespace", &namespace_string)
