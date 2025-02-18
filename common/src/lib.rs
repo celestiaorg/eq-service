@@ -1,18 +1,12 @@
 use alloy::sol;
 use celestia_types::nmt::{Namespace, NamespaceProof};
-use celestia_types::{ShareProof, Share, RowProof};
-use nmt_rs::{simple_merkle::proof::Proof, NamespacedHash, TmSha2Hasher};
+use celestia_types::RowProof;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "utils")]
 mod error;
 #[cfg(feature = "utils")]
 pub use error::InclusionServiceError;
-
-#[cfg(feature = "utils")]
-pub mod utils;
-#[cfg(feature = "utils")]
-pub use utils::*;
 
 #[cfg(feature = "grpc")]
 /// gRPC generated bindings

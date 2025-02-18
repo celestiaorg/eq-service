@@ -33,6 +33,9 @@ fn main() {
         serde_json::to_string(&proof).expect("Failed to serialize proof"),
     )
     .expect("Failed to write proof to file");*/
-    let r = client.execute(&KECCAK_INCLUSION_ELF, &stdin).run().expect("Failed executing program");
+    let r = client
+        .execute(&KECCAK_INCLUSION_ELF, &stdin)
+        .run()
+        .expect("Failed executing program");
     print!("✅ Proof seems OK! Execution completed without issue.\n");
 }

@@ -3,26 +3,19 @@
 
 sp1_zkvm::entrypoint!(main);
 use alloy::{primitives::B256, sol_types::SolType};
-use celestia_types::{
-    blob::Blob,
-    AppVersion,
-    hash::Hash,
-    ShareProof
-};
+use celestia_types::{blob::Blob, hash::Hash, AppVersion, ShareProof};
 use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
 use sha3::{Digest, Keccak256};
 
 pub fn main() {
     let input: KeccakInclusionToDataRootProofInput = sp1_zkvm::io::read();
-    let data_root_as_hash= Hash::Sha256(input.data_root);
+    let data_root_as_hash = Hash::Sha256(input.data_root);
 
-    let blob = Blob::new(input.namespace_id, input.data, AppVersion::V3)
-        .expect("Failed creating blob");
+    let blob =
+        Blob::new(input.namespace_id, input.data, AppVersion::V3).expect("Failed creating blob");
 
-    let computed_keccak_hash: [u8; 32] = Keccak256::new()
-        .chain_update(&blob.data)
-        .finalize()
-        .into();
+    let computed_keccak_hash: [u8; 32] =
+        Keccak256::new().chain_update(&blob.data).finalize().into();
 
     let rp = ShareProof {
         data: blob

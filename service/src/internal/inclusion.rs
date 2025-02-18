@@ -1,12 +1,10 @@
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
-use celestia_rpc::{BlobClient, ShareClient, Client as CelestiaJSONClient, HeaderClient};
-use celestia_types::{ShareProof, Share, RowProof};
-use eq_common::{
-    InclusionServiceError, KeccakInclusionToDataRootProofInput,
-};
+use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
+use eq_common::{InclusionServiceError, KeccakInclusionToDataRootProofInput};
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
+use sha3::Keccak256;
 use sha3::{Digest, Sha3_256};
 use sled::{Transactional, Tree as SledTree};
 use sp1_sdk::{
@@ -15,7 +13,6 @@ use sp1_sdk::{
 };
 use std::sync::Arc;
 use tokio::sync::{mpsc, OnceCell};
-use sha3::{Keccak256};
 
 /// Hardcoded ELF binary for the crate `program-keccak-inclusion`
 static KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
@@ -242,7 +239,9 @@ impl InclusionService {
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
-        let blob_index = blob.index.ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
+        let blob_index = blob
+            .index
+            .ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
         let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
         let ods_index = blob_index - (first_row_index * ods_size);
 
@@ -251,13 +250,12 @@ impl InclusionService {
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
-        range_response.proof.verify(header.dah.hash())
+        range_response
+            .proof
+            .verify(header.dah.hash())
             .map_err(|_| InclusionServiceError::FailedShareRangeProofSanityCheck)?;
 
-        let keccak_hash: [u8; 32] = Keccak256::new()
-            .chain_update(&blob.data)
-            .finalize()
-            .into();
+        let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
 
         debug!("Creating ZK Proof input from Celestia Data");
         let proof_input = KeccakInclusionToDataRootProofInput {
@@ -271,7 +269,7 @@ impl InclusionService {
 
         self.send_job_with_new_status(
             job_key.to_vec(),
-                 JobStatus::DataAvailable(proof_input),
+            JobStatus::DataAvailable(proof_input),
             job.clone(),
         )
     }

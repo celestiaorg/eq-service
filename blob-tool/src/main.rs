@@ -56,7 +56,11 @@ async fn main() {
         .await
         .expect("Failed getting blob");
 
-    println!("shares len {:?}, starting index {:?}", blob.shares_len(), blob.index);
+    println!(
+        "shares len {:?}, starting index {:?}",
+        blob.shares_len(),
+        blob.index
+    );
 
     let index = blob.index.unwrap();
     let first_row_index: u64 = index.div_ceil(eds_size) - 1;
@@ -67,13 +71,12 @@ async fn main() {
         .await
         .expect("Failed getting shares");
 
-    range_response.proof.verify(header.dah.hash())
+    range_response
+        .proof
+        .verify(header.dah.hash())
         .expect("Failed verifying proof");
 
-    let keccak_hash: [u8; 32] = Keccak256::new()
-        .chain_update(&blob.data)
-        .finalize()
-        .into();
+    let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
 
     let proof_input = KeccakInclusionToDataRootProofInput {
         data: blob.clone().data,
@@ -97,10 +100,12 @@ async fn main() {
         row_proof: proof_input.clone().row_proof,
     };
 
-    share_proof.verify(header.dah.hash())
+    share_proof
+        .verify(header.dah.hash())
         .expect("Failed verifying proof");
 
-    let json = serde_json::to_string_pretty(&proof_input).expect("Failed serializing proof input to JSON");
+    let json =
+        serde_json::to_string_pretty(&proof_input).expect("Failed serializing proof input to JSON");
 
     std::fs::write("proof_input.json", json).expect("Failed writing proof input to file");
 
