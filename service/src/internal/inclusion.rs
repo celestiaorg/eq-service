@@ -1,11 +1,10 @@
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
-use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient};
-use eq_common::{
-    create_inclusion_proof_input, InclusionServiceError, KeccakInclusionToDataRootProofInput,
-};
+use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
+use eq_common::{InclusionServiceError, KeccakInclusionToDataRootProofInput};
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
+use sha3::Keccak256;
 use sha3::{Digest, Sha3_256};
 use sled::{Transactional, Tree as SledTree};
 use sp1_sdk::{
@@ -225,35 +224,54 @@ impl InclusionService {
         client: Arc<CelestiaJSONClient>,
     ) -> Result<(), InclusionServiceError> {
         debug!("Preparing request to Celestia");
-        let blob = client
-            .blob_get(job.height.into(), job.namespace, job.commitment)
-            .await
-            .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
         let header = client
             .header_get_by_height(job.height.into())
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
-        let nmt_multiproofs = client
-            .blob_get_proof(job.height.into(), job.namespace, job.commitment)
+        let eds_row_roots = header.dah.row_roots();
+        let eds_size: u64 = eds_row_roots.len().try_into().unwrap();
+        let ods_size: u64 = eds_size / 2;
+
+        let blob = client
+            .blob_get(job.height.into(), job.namespace, job.commitment)
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
-        debug!("Creating ZK Proof input from Celestia Data");
-        if let Ok(proof_input) = create_inclusion_proof_input(&blob, &header, nmt_multiproofs) {
-            self.send_job_with_new_status(
-                job_key.to_vec(),
-                JobStatus::DataAvailable(proof_input),
-                job.clone(),
-            )?;
-            return Ok(());
-        }
+        let blob_index = blob
+            .index
+            .ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
+        let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
+        let ods_index = blob_index - (first_row_index * ods_size);
 
-        error!("Failed to get proof from Celestia - This should be unreachable!");
-        Err(InclusionServiceError::DaClientError(
-            "Could not obtain NMT proof of data inclusion. PLEASE REPORT!".to_string(),
-        ))
+        let range_response = client
+            .share_get_range(&header, ods_index, ods_index + blob.shares_len() as u64)
+            .await
+            .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
+
+        range_response
+            .proof
+            .verify(header.dah.hash())
+            .map_err(|_| InclusionServiceError::FailedShareRangeProofSanityCheck)?;
+
+        let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
+
+        debug!("Creating ZK Proof input from Celestia Data");
+        let proof_input = KeccakInclusionToDataRootProofInput {
+            data: blob.data,
+            namespace_id: job.namespace,
+            share_proofs: range_response.proof.share_proofs,
+            row_proof: range_response.proof.row_proof,
+            data_root: header.dah.hash().as_bytes().try_into().unwrap(),
+            keccak_hash: keccak_hash,
+        };
+
+        self.send_job_with_new_status(
+            job_key.to_vec(),
+            JobStatus::DataAvailable(proof_input),
+            job.clone(),
+        )
     }
 
     /// Helper function to handle error from a [jsonrpsee] based DA client.
