@@ -36,9 +36,11 @@ pub fn main() {
         row_proof: input.row_proof,
     };
 
+    println!("Verifying proof");
     rp.verify(data_root_as_hash)
         .expect("Failed verifying proof");
 
+    println!("Checking keccak hash");
     if computed_keccak_hash != input.keccak_hash {
         panic!("Computed keccak hash does not match input keccak hash");
     }

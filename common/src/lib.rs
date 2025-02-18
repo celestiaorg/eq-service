@@ -28,7 +28,7 @@ pub mod eqs {
     4. PayyPoseidonToBlockHashProof
 */
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct KeccakInclusionToDataRootProofInput {
     pub data: Vec<u8>,
     pub namespace_id: Namespace,

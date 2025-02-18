@@ -4,6 +4,7 @@ use base64::Engine;
 use celestia_rpc::{BlobClient, Client, HeaderClient, ShareClient};
 use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
+use celestia_types::ShareProof;
 use clap::{command, Parser};
 use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
 use sha3::{Digest, Keccak256};
@@ -33,6 +34,10 @@ async fn main() {
         .await
         .expect("Failed getting header");
 
+    let eds_row_roots = header.dah.row_roots();
+    let eds_size: u64 = eds_row_roots.len().try_into().unwrap();
+    let ods_size: u64 = eds_size / 2;
+
     let commitment = Commitment::new(
         base64::engine::general_purpose::STANDARD
             .decode(&args.commitment)
@@ -54,8 +59,11 @@ async fn main() {
     println!("shares len {:?}, starting index {:?}", blob.shares_len(), blob.index);
 
     let index = blob.index.unwrap();
+    let first_row_index: u64 = index.div_ceil(eds_size) - 1;
+    let ods_index = blob.index.unwrap() - (first_row_index * ods_size);
+
     let range_response = client
-        .share_get_range(&header, index, index + blob.shares_len() as u64)
+        .share_get_range(&header, ods_index, ods_index + blob.shares_len() as u64)
         .await
         .expect("Failed getting shares");
 
@@ -68,13 +76,29 @@ async fn main() {
         .into();
 
     let proof_input = KeccakInclusionToDataRootProofInput {
-        data: blob.data,
+        data: blob.clone().data,
         namespace_id: namespace,
-        share_proofs: range_response.proof.share_proofs,
-        row_proof: range_response.proof.row_proof,
+        share_proofs: range_response.clone().proof.share_proofs,
+        row_proof: range_response.clone().proof.row_proof,
         data_root: header.dah.hash().as_bytes().try_into().unwrap(),
         keccak_hash: keccak_hash,
     };
+
+    // create a ShareProof from the KeccakInclusionToDataRootProofInput and verify it
+    let share_proof = ShareProof {
+        data: blob
+            .to_shares()
+            .expect("Failed to convert blob to shares")
+            .into_iter()
+            .map(|share| share.as_ref().try_into().unwrap())
+            .collect(),
+        namespace_id: namespace,
+        share_proofs: proof_input.clone().share_proofs,
+        row_proof: proof_input.clone().row_proof,
+    };
+
+    share_proof.verify(header.dah.hash())
+        .expect("Failed verifying proof");
 
     let json = serde_json::to_string_pretty(&proof_input).expect("Failed serializing proof input to JSON");
 

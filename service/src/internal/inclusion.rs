@@ -266,8 +266,7 @@ impl InclusionService {
             job_key.to_vec(),
                  JobStatus::DataAvailable(proof_input),
             job.clone(),
-        )?;
-        Ok(())
+        )
     }
 
     /// Helper function to handle error from a [jsonrpsee] based DA client.
