@@ -5,6 +5,8 @@ alias r := run-debug
 alias rr := run-release
 alias db := docker-build
 alias dr := docker-run
+alias pb := podman-build
+alias pr := podman-run
 alias b := build-debug
 alias br := build-release
 alias f := fmt
@@ -74,10 +76,22 @@ run-debug *FLAGS: _pre-build _pre-run
 
 # Build docker image & tag `eq_service`
 docker-build:
-    podman build -t eq_service .
+    docker build -t eq_service .
 
 # Run a pre-built docker image
 docker-run:
+    #!/usr/bin/env bash
+    set -a  # Auto export vars
+    source .env
+    mkdir -p $EQ_DB_PATH
+    docker run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
+
+# Build docker image & tag `eq_service`
+podman-build:
+    podman build -t eq_service .
+
+# Run a pre-built podman image
+podman-run:
     #!/usr/bin/env bash
     set -a  # Auto export vars
     source .env
