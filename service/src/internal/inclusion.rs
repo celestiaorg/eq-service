@@ -227,20 +227,27 @@ impl InclusionService {
         client: Arc<CelestiaJSONClient>,
     ) -> Result<(), InclusionServiceError> {
         debug!("Preparing request to Celestia");
-        let blob = client
-            .blob_get(job.height.into(), job.namespace, job.commitment)
-            .await
-            .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
-
-        let blob_index = blob.index.ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
 
         let header = client
             .header_get_by_height(job.height.into())
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
+        let eds_row_roots = header.dah.row_roots();
+        let eds_size: u64 = eds_row_roots.len().try_into().unwrap();
+        let ods_size: u64 = eds_size / 2;
+
+        let blob = client
+            .blob_get(job.height.into(), job.namespace, job.commitment)
+            .await
+            .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
+
+        let blob_index = blob.index.ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
+        let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
+        let ods_index = blob_index - (first_row_index * ods_size);
+
         let range_response = client
-            .share_get_range(&header, blob_index, blob_index + blob.shares_len() as u64)
+            .share_get_range(&header, ods_index, ods_index + blob.shares_len() as u64)
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
