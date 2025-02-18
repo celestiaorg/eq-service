@@ -1,17 +1,12 @@
 use alloy::sol;
 use celestia_types::nmt::{Namespace, NamespaceProof};
-use nmt_rs::{simple_merkle::proof::Proof, NamespacedHash, TmSha2Hasher};
+use celestia_types::RowProof;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "utils")]
 mod error;
 #[cfg(feature = "utils")]
 pub use error::InclusionServiceError;
-
-#[cfg(feature = "utils")]
-pub mod utils;
-#[cfg(feature = "utils")]
-pub use utils::*;
 
 #[cfg(feature = "grpc")]
 /// gRPC generated bindings
@@ -27,15 +22,13 @@ pub mod eqs {
     4. PayyPoseidonToBlockHashProof
 */
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct KeccakInclusionToDataRootProofInput {
-    pub blob_data: Vec<u8>,
-    pub blob_index: u64,
-    pub blob_namespace: Namespace,
-    pub nmt_multiproofs: Vec<NamespaceProof>,
-    pub row_root_multiproof: Proof<TmSha2Hasher>,
-    pub row_roots: Vec<NamespacedHash<29>>,
-    pub data_root: Vec<u8>,
+    pub data: Vec<u8>,
+    pub namespace_id: Namespace,
+    pub share_proofs: Vec<NamespaceProof>,
+    pub row_proof: RowProof,
+    pub data_root: [u8; 32],
     pub keccak_hash: [u8; 32],
 }
 

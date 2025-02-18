@@ -22,7 +22,7 @@ fn main() {
     //     .run()
     //     .expect("Failed executing program");
 
-    let (pk, _vk) = client.setup(&KECCAK_INCLUSION_ELF);
+    /*let (pk, _vk) = client.setup(&KECCAK_INCLUSION_ELF);
     let proof = client
         .prove(&pk, &stdin)
         .groth16()
@@ -32,7 +32,10 @@ fn main() {
         "sample_groth16_proof.json",
         serde_json::to_string(&proof).expect("Failed to serialize proof"),
     )
-    .expect("Failed to write proof to file");
-
-    print!("✅ Proof seems OK! Execution completed without issue.\n")
+    .expect("Failed to write proof to file");*/
+    let r = client
+        .execute(&KECCAK_INCLUSION_ELF, &stdin)
+        .run()
+        .expect("Failed executing program");
+    print!("✅ Proof seems OK! Execution completed without issue.\n");
 }
