@@ -7274,13 +7274,3 @@ dependencies = [
  "sha3",
  "subtle",
 ]
-
-[[patch.unused]]
-name = "curve25519-dalek"
-version = "4.1.3"
-source = "git+https://github.com/sp1-patches/curve25519-dalek?tag=patch-4.1.3-sp1-4.0.0#ce2e36cfaeed9f9b52fe8b3f5ed398c009052866"
-
-[[patch.unused]]
-name = "sha2"
-version = "0.10.6"
-source = "git+https://github.com/sp1-patches/RustCrypto-hashes?tag=patch-sha2-0.10.6-sp1-4.0.0#e5f8b7eaaa9801503bd998932a52b65848eee234"
