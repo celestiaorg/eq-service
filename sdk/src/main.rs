@@ -1,4 +1,4 @@
-use eq_sdk::{types::BlobId, EqClient};
+use eq_sdk::{types::BlobId, EqClient, EqInterface};
 use tonic::transport::Endpoint;
 
 #[tokio::main]

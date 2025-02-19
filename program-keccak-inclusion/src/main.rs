@@ -55,5 +55,4 @@ pub fn main() {
     ));
     sp1_zkvm::io::commit_slice(&output);
     println!("cycle-tracker-end: commit output");
-
 }
