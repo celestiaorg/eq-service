@@ -1,6 +1,7 @@
 default:
     @just --list
 
+alias e := run-examples
 alias r := run-debug
 alias rr := run-release
 alias db := docker-build
@@ -49,6 +50,13 @@ _pre-run:
         exit 1
     fi
 
+# Run examples
+run-examples *FLAGS: _pre-build _pre-run
+    #!/usr/bin/env bash
+    set -a  # Auto export vars
+    source .env
+    cargo run -p eq-sdk --example client -- {{ FLAGS }}
+
 # Run in release mode, with optimizations AND debug logs
 run-release *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
@@ -74,9 +82,9 @@ run-debug *FLAGS: _pre-build _pre-run
     # export CELESTIA_NODE_AUTH_TOKEN=$(celestia light auth admin --p2p.network mocha)
     RUST_LOG=eq_service=debug cargo r -- {{ FLAGS }}
 
-# Build docker image & tag `eq_service`
+# Build docker image & tag `eq-service`
 docker-build:
-    docker build -t eq_service .
+    docker build -t eq-service .
 
 # Run a pre-built docker image
 docker-run:
@@ -84,11 +92,11 @@ docker-run:
     set -a  # Auto export vars
     source .env
     mkdir -p $EQ_DB_PATH
-    docker run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
+    docker run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
 
-# Build docker image & tag `eq_service`
+# Build docker image & tag `eq-service`
 podman-build:
-    podman build -t eq_service .
+    podman build -t eq-service .
 
 # Run a pre-built podman image
 podman-run:
