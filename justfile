@@ -92,7 +92,7 @@ docker-run:
     set -a  # Auto export vars
     source .env
     mkdir -p $EQ_DB_PATH
-    docker run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq-service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
+    docker run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
 
 # Build docker image & tag `eq-service`
 podman-build:
@@ -104,7 +104,7 @@ podman-run:
     set -a  # Auto export vars
     source .env
     mkdir -p $EQ_DB_PATH
-    podman run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq-service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
+    podman run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
 
 # Build in debug mode, no optimizations
 build-debug: _pre-build
