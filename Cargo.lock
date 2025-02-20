@@ -1167,7 +1167,7 @@ dependencies = [
 [[package]]
 name = "celestia-proto"
 version = "0.7.0"
-source = "git+https://github.com/eigerco/lumina.git#f59466a25e5392d01a8e15a59b117766e3aa2cc4"
+source = "git+https://github.com/eigerco/lumina.git#c0dd5e227ef4d231a9a6261062edcb5a94995f0c"
 dependencies = [
  "bytes",
  "prost 0.13.4",
@@ -1182,7 +1182,8 @@ dependencies = [
 [[package]]
 name = "celestia-rpc"
 version = "0.9.0"
-source = "git+https://github.com/eigerco/lumina.git#f59466a25e5392d01a8e15a59b117766e3aa2cc4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc214d362b640e22d255b1c8684c0a364dd71b52c78d3203b40e19d4083df75a"
 dependencies = [
  "async-trait",
  "celestia-types",
@@ -1197,7 +1198,7 @@ dependencies = [
 [[package]]
 name = "celestia-types"
 version = "0.10.0"
-source = "git+https://github.com/eigerco/lumina.git#f59466a25e5392d01a8e15a59b117766e3aa2cc4"
+source = "git+https://github.com/eigerco/lumina.git#c0dd5e227ef4d231a9a6261062edcb5a94995f0c"
 dependencies = [
  "base64 0.22.1",
  "bech32",
@@ -1963,7 +1964,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "eq_service"
+name = "eq-service"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",

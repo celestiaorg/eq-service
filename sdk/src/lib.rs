@@ -1,23 +1,26 @@
-use eq_common::eqs::inclusion_client::InclusionClient;
-use eq_common::eqs::{GetKeccakInclusionRequest, GetKeccakInclusionResponse};
+pub use eq_common::eqs::inclusion_client::InclusionClient;
+pub use eq_common::eqs::{
+    get_keccak_inclusion_response, GetKeccakInclusionRequest, GetKeccakInclusionResponse,
+};
 use tonic::transport::Channel;
 use tonic::Status as TonicStatus;
 
 pub mod types;
-use types::BlobId;
+pub use types::BlobId;
 
 #[derive(Debug)]
 pub struct EqClient {
     grpc_channel: Channel,
 }
 
-pub trait EqInterface {
-    fn get_channel(&self) -> &Channel;
-
-    fn get_keccak_inclusion(
-        &self,
-        request: &BlobId,
-    ) -> impl std::future::Future<Output = Result<GetKeccakInclusionResponse, TonicStatus>> + Send
+impl EqClient {
+    pub fn new(grpc_channel: Channel) -> Self {
+        Self { grpc_channel }
+    }
+    pub fn get_keccak_inclusion<'a>(
+        &'a self,
+        request: &'a BlobId,
+    ) -> impl std::future::Future<Output = Result<GetKeccakInclusionResponse, TonicStatus>> + Send + 'a
     where
         Self: Sync,
     {
@@ -31,23 +34,11 @@ pub trait EqInterface {
                     .to_vec(),
                 height: request.height.into(),
             };
-            let mut client = InclusionClient::new(self.get_channel().clone());
+            let mut client = InclusionClient::new(self.grpc_channel.clone());
             match client.get_keccak_inclusion(request).await {
                 Ok(response) => Ok(response.into_inner()),
                 Err(e) => Err(e),
             }
         }
-    }
-}
-
-impl EqInterface for EqClient {
-    fn get_channel(&self) -> &Channel {
-        &self.grpc_channel
-    }
-}
-
-impl EqClient {
-    pub fn new(grpc_channel: Channel) -> Self {
-        Self { grpc_channel }
     }
 }
