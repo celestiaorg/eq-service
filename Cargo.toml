@@ -3,6 +3,10 @@ members = ["service", "program-keccak-inclusion", "common", "blob-tool", "runner
 default-members = ["service"]
 resolver = "2"
 
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
 [workspace.dependencies]
 celestia-types = "0.10"
 celestia-rpc = "0.9"
