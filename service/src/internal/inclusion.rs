@@ -8,11 +8,11 @@ use sha3::Keccak256;
 use sha3::{Digest, Sha3_256};
 use sled::{Transactional, Tree as SledTree};
 use sp1_sdk::{
-    network::Error as SP1NetworkError, NetworkProver as SP1NetworkProver, Prover,
-    SP1ProofWithPublicValues, SP1Stdin,
+    NetworkProver as SP1NetworkProver, Prover, SP1ProofWithPublicValues, SP1Stdin,
+    network::Error as SP1NetworkError,
 };
 use std::sync::Arc;
-use tokio::sync::{mpsc, OnceCell};
+use tokio::sync::{OnceCell, mpsc};
 
 /// Hardcoded ELF binary for the crate `program-keccak-inclusion`
 static KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
@@ -290,7 +290,9 @@ impl InclusionService {
             JsonRpcError::Call(error_object) => {
                 // TODO: make this handle errors much better! JSON stringiness is a problem!
                 if error_object.message().starts_with("header: not found") {
-                    e = InclusionServiceError::DaClientError(format!("{call_err} - Likely DA Node is not properly synced, and blob does exists on the network. PLEASE REPORT!"));
+                    e = InclusionServiceError::DaClientError(format!(
+                        "{call_err} - Likely DA Node is not properly synced, and blob does exists on the network. PLEASE REPORT!"
+                    ));
                     job_status = JobStatus::Failed(
                         e.clone(),
                         Some(JobStatus::DataAvailabilityPending.into()),
@@ -359,9 +361,9 @@ impl InclusionService {
         let (e, job_status);
         match zk_client_error {
             SP1NetworkError::SimulationFailed | SP1NetworkError::RequestUnexecutable { .. } => {
-                e = InclusionServiceError::DaClientError(
-                    format!("ZKP program critical failure: {zk_client_error} occured for {job:?} PLEASE REPORT!"),
-                );
+                e = InclusionServiceError::DaClientError(format!(
+                    "ZKP program critical failure: {zk_client_error} occured for {job:?} PLEASE REPORT!"
+                ));
                 job_status = JobStatus::Failed(e.clone(), None);
             }
             SP1NetworkError::RequestUnfulfillable { .. } => {

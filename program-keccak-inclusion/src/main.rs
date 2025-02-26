@@ -3,7 +3,7 @@
 
 sp1_zkvm::entrypoint!(main);
 use alloy::{primitives::B256, sol_types::SolType};
-use celestia_types::{blob::Blob, hash::Hash, AppVersion, ShareProof};
+use celestia_types::{AppVersion, ShareProof, blob::Blob, hash::Hash};
 use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
 use sha3::{Digest, Keccak256};
 

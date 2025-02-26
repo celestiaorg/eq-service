@@ -1,9 +1,9 @@
 pub use eq_common::eqs::inclusion_client::InclusionClient;
 pub use eq_common::eqs::{
-    get_keccak_inclusion_response, GetKeccakInclusionRequest, GetKeccakInclusionResponse,
+    GetKeccakInclusionRequest, GetKeccakInclusionResponse, get_keccak_inclusion_response,
 };
-use tonic::transport::Channel;
 use tonic::Status as TonicStatus;
+use tonic::transport::Channel;
 
 pub mod types;
 pub use types::BlobId;
