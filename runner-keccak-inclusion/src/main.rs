@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use eq_common::KeccakInclusionToDataRootProofInput;
-use sp1_sdk::{Prover, ProverClient, SP1Stdin};
+use sp1_sdk::{ProverClient, SP1Stdin};
 use std::fs;
 
 const KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(
@@ -33,7 +33,7 @@ fn main() {
         serde_json::to_string(&proof).expect("Failed to serialize proof"),
     )
     .expect("Failed to write proof to file");*/
-    let r = client
+    let _r = client
         .execute(&KECCAK_INCLUSION_ELF, &stdin)
         .run()
         .expect("Failed executing program");

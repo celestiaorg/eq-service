@@ -9,7 +9,7 @@ use internal::util::*;
 
 use log::{debug, error, info};
 use std::sync::Arc;
-use tokio::sync::{OnceCell, mpsc};
+use tokio::sync::{mpsc, OnceCell};
 use tonic::transport::Server;
 
 #[tokio::main]
