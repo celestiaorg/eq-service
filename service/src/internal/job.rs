@@ -10,8 +10,8 @@ pub type Job = BlobId;
 
 /// Used as a [Job] state machine for the eq-service.
 ///
-/// Should map 1to1 with [ResponseStatus] for consistency in internal state
-/// and what is reported by the RPC.
+/// Should map 1to1 with [ResponseStatus](eq_common::eqs::get_keccak_inclusion_response::ResponseValue)
+/// for consistency in internal state and what is reported by the RPC.
 #[derive(Serialize, Deserialize)]
 pub enum JobStatus {
     /// DA inclusion proof data is being collected
