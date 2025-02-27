@@ -5,7 +5,7 @@ use tokio::signal::{
     unix::{signal as unix_signal, SignalKind},
 };
 /// A Succinct Prover Network request ID.
-/// See: https://docs.succinct.xyz/docs/generating-proofs/prover-network/usage
+/// See: https://docs.succinct.xyz/docs/sp1/generating-proofs/prover-network/usage
 pub type SuccNetJobId = [u8; 32];
 
 /// A SHA3 256 bit hash of a zkVM program's ELF.
