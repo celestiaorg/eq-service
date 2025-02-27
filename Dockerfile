@@ -59,7 +59,7 @@ RUN --mount=type=cache,id=target_cache,target=/app/target \
 # Finally, compile the project in release mode.
 RUN --mount=type=cache,id=target_cache,target=/app/target \
     cargo build --release && \
-    cp /app/target/release/eq_service /app/eq_service
+    cp /app/target/release/eq-service /app/eq-service
 
 ####################################################################################################
 ## Final stage: Prepare the runtime image
@@ -69,6 +69,6 @@ FROM debian:bookworm-slim
 # We must have libcurl for the SP1 client to function!
 RUN apt update && apt install -y libcurl4 && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/eq_service ./
+COPY --from=builder /app/eq-service ./
 
-CMD ["/eq_service"]
+CMD ["/eq-service"]
