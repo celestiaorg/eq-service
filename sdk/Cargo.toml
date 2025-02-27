@@ -2,7 +2,12 @@
 name = "eq-sdk"
 edition.workspace = true
 version.workspace = true
-
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "Celestia Equivalence Service SDK to build clients and integrations to for a running instance of the service" 
+documentation = "https://docs.rs/eq-sdk"
+ 
 [dependencies]
 eq-common = {path = "../common"}
 tonic = {workspace = true, features = ["transport"]}
