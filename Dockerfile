@@ -11,6 +11,9 @@ RUN apt-get update \
 RUN curl -L https://sp1.succinct.xyz | bash
 RUN /root/.sp1/bin/sp1up
 
+# FIXME: cargo isn't installed for sp1 correctly otherwise (maybe 1.85-dev related?)
+RUN rustup update stable
+
 ####################################################################################################
 ## Dependency stage: Cache Cargo dependencies via cargo fetch
 ####################################################################################################
@@ -67,7 +70,9 @@ RUN --mount=type=cache,id=target_cache,target=/app/target \
 FROM debian:bookworm-slim
 # We use bookwork as we need glibc
 # We must have libcurl for the SP1 client to function!
-RUN apt update && apt install -y libcurl4 && rm -rf /var/lib/apt/lists/*
+# FIXME: we don't need to do this, so long as the image we use has updated ca-certs
+# <https://github.com/succinctlabs/sp1/issues/2075#issuecomment-2704953661>
+# RUN apt update && apt install -y libcurl4 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/eq-service ./
 
