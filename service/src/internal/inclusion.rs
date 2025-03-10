@@ -242,7 +242,10 @@ impl InclusionService {
         let blob_index = blob
             .index
             .ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
-        let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
+        
+        // https://github.com/celestiaorg/eq-service/issues/65
+        //let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
+        let first_row_index: u64 = blob.index.unwrap() / eds_size;
         let ods_index = blob_index - (first_row_index * ods_size);
 
         let range_response = client
