@@ -23,7 +23,7 @@ message GetKeccakInclusionResponse {
     oneof response_value {
         bytes proof_id = 2;        // When ZKP_PENDING, this is the proof request/job id on the prover network
         bytes proof = 3;           // When ZKP_FINISHED, this is the proof data
-        string error_message = 4;  // Used when status is FAILED, this includes details why
+        string error_message = 4;  // Used when status is RETRYABLE_FAILURE or PERMANENT_FAILURE, this includes details why
         string status_message = 5; // Additional details on status of a request
     }
 }

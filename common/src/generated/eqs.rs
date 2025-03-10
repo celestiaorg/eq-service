@@ -87,7 +87,7 @@ pub mod get_keccak_inclusion_response {
         /// When ZKP_FINISHED, this is the proof data
         #[prost(bytes, tag = "3")]
         Proof(::prost::alloc::vec::Vec<u8>),
-        /// Used when status is FAILED, this includes details why
+        /// Used when status is RETRYABLE_FAILURE or PERMANENT_FAILURE, this includes details why
         #[prost(string, tag = "4")]
         ErrorMessage(::prost::alloc::string::String),
         /// Additional details on status of a request

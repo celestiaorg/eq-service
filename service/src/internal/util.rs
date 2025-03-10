@@ -2,7 +2,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use tokio::signal::{
     self,
-    unix::{signal as unix_signal, SignalKind},
+    unix::{SignalKind, signal as unix_signal},
 };
 /// A Succinct Prover Network request ID.
 /// See: <https://docs.succinct.xyz/docs/sp1/generating-proofs/prover-network/usage>

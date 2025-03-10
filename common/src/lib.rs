@@ -1,6 +1,6 @@
 use alloy::sol;
-use celestia_types::nmt::{Namespace, NamespaceProof};
 use celestia_types::RowProof;
+use celestia_types::nmt::{Namespace, NamespaceProof};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "utils")]
@@ -43,21 +43,24 @@ mod test {
     use super::*;
 
     use alloy_primitives::FixedBytes;
-    use alloy_sol_types::{SolValue, SolType};
+    use alloy_sol_types::{SolType, SolValue};
 
     #[test]
     fn test_abi_encoding() {
         let f: FixedBytes<32> = FixedBytes::from([0; 32]);
-        let output = (FixedBytes::<32>::from([0; 32]), FixedBytes::<32>::from([0; 32]));
+        let output = (
+            FixedBytes::<32>::from([0; 32]),
+            FixedBytes::<32>::from([0; 32]),
+        );
         let encoded = output.abi_encode();
         // Interestingly, this line doesn't work
         // You can't get a KeccakInclusionToDataRootProofOutput by calling KeccakInclusionToDataRootProofOutput::abi_decode
-        // However, we can get a tuple of alloy_primitives::FixedBytes<32> 
+        // However, we can get a tuple of alloy_primitives::FixedBytes<32>
         // which is weird but fine
         /*let decoded: KeccakInclusionToDataRootProofOutput = KeccakInclusionToDataRootProofOutput::abi_decode(&encoded, false)
-            .unwrap();*/
-        let decoded: (FixedBytes<32>, FixedBytes<32>) = KeccakInclusionToDataRootProofOutput::abi_decode(&encoded, true)
-            .unwrap();
+        .unwrap();*/
+        let decoded: (FixedBytes<32>, FixedBytes<32>) =
+            KeccakInclusionToDataRootProofOutput::abi_decode(&encoded, true).unwrap();
         assert_eq!(output, decoded);
     }
 }
