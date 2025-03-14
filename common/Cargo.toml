@@ -20,6 +20,7 @@ alloy-sol-types = {workspace = true }
 alloy-primitives = {workspace = true}
 prost = {workspace = true, optional = true}
 tonic = {workspace = true, features = ["codegen", "prost"], optional = true}
+bincode = {workspace = true}
 
 [build-dependencies]
 tonic-build = {workspace = true, features=["prost"], optional = true}

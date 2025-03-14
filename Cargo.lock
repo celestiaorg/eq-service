@@ -1958,6 +1958,7 @@ dependencies = [
  "alloy",
  "alloy-primitives",
  "alloy-sol-types",
+ "bincode",
  "celestia-types",
  "nmt-rs",
  "prost 0.12.6",
