@@ -108,8 +108,13 @@ impl InclusionService {
     pub async fn prove(&self, job: Job) -> Result<(), InclusionServiceError> {
         let job_key = bincode::serialize(&job)
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
-        if let Some(queue_data) = self.queue_db.get(&job_key).map_err(|e| InclusionServiceError::InternalError(e.to_string()))? {
-            let mut job_status: JobStatus = bincode::deserialize(&queue_data).map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
+        if let Some(queue_data) = self
+            .queue_db
+            .get(&job_key)
+            .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?
+        {
+            let mut job_status: JobStatus = bincode::deserialize(&queue_data)
+                .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
             debug!("Job worker processing with starting status: {job_status:?}");
             match job_status {
                 JobStatus::DataAvailabilityPending => {
@@ -232,7 +237,11 @@ impl InclusionService {
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
         let eds_row_roots = header.dah.row_roots();
-        let eds_size: u64 = eds_row_roots.len().try_into().map_err(|_| InclusionServiceError::InternalError("Failed to convert eds_row_roots.len() to u64".to_string()))?;
+        let eds_size: u64 = eds_row_roots.len().try_into().map_err(|_| {
+            InclusionServiceError::InternalError(
+                "Failed to convert eds_row_roots.len() to u64".to_string(),
+            )
+        })?;
         let ods_size: u64 = eds_size / 2;
 
         let blob = client
@@ -243,10 +252,11 @@ impl InclusionService {
         let blob_index = blob
             .index
             .ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
-        
+
         // https://github.com/celestiaorg/eq-service/issues/65
         //let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
-        let first_row_index: u64 = blob.index.ok_or(InclusionServiceError::MissingBlobIndex)? / eds_size;
+        let first_row_index: u64 =
+            blob.index.ok_or(InclusionServiceError::MissingBlobIndex)? / eds_size;
         let ods_index = blob_index - (first_row_index * ods_size);
 
         let range_response = client
@@ -267,7 +277,11 @@ impl InclusionService {
             namespace_id: job.namespace,
             share_proofs: range_response.proof.share_proofs,
             row_proof: range_response.proof.row_proof,
-            data_root: header.dah.hash().as_bytes().try_into().map_err(|_| InclusionServiceError::InternalError("Failed to convert header.dah.hash().as_bytes() to [u8; 32]".to_string()))?,
+            data_root: header.dah.hash().as_bytes().try_into().map_err(|_| {
+                InclusionServiceError::InternalError(
+                    "Failed to convert header.dah.hash().as_bytes() to [u8; 32]".to_string(),
+                )
+            })?,
             keccak_hash: keccak_hash,
         };
 

@@ -62,7 +62,7 @@ async fn main() {
         blob.index
     );
 
-    let index = blob.index.unwrap();
+    let _index = blob.index.unwrap();
     //let first_row_index: u64 = index.div_ceil(eds_size) - 1;
     // Trying this Diego's way
     let first_row_index: u64 = blob.index.unwrap() / eds_size;

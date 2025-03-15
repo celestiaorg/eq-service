@@ -8,7 +8,9 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+# TODO: use workspace version, cannot override default feats though... 
 eq-common = {path = "../common", default-features = false}
+
 sp1-zkvm = {workspace = true}
 celestia-types = {workspace = true}
 nmt-rs = {workspace = true}

@@ -8,8 +8,9 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-eq-common = {path = "../common"}
-eq-sdk = {path = "../sdk"}
+eq-common.workspace = true
+eq-sdk.workspace = true
+
 serde = { workspace = true, features = ["derive"] }
 bincode = {workspace = true}
 celestia-types = {workspace = true}

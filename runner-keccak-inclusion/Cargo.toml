@@ -8,6 +8,6 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-sp1-sdk = {workspace = true}
-eq-common = {path = "../common"}
-serde_json = {workspace = true}
+sp1-sdk.workspace = true
+eq-common.workspace = true
+serde_json.workspace = true

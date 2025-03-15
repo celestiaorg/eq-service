@@ -9,7 +9,8 @@ description = "Celestia Equivalence Service SDK to build clients and integration
 documentation = "https://docs.rs/eq-sdk"
  
 [dependencies]
-eq-common = {path = "../common", version = "0.1.0"}
+eq-common.workspace = true
+
 tonic = {workspace = true, features = ["transport"]}
 serde = {workspace = true, features = ["derive"]}
 celestia-types = {workspace = true}
