@@ -1,8 +1,10 @@
+// Re-export eq-common parts
 pub use eq_common::eqs::inclusion_client::InclusionClient;
 pub use eq_common::eqs::{
     get_keccak_inclusion_response, GetKeccakInclusionRequest, GetKeccakInclusionResponse,
 };
 pub use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
+
 use tonic::transport::Channel;
 use tonic::Status as TonicStatus;
 
