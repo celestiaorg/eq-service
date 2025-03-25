@@ -1,6 +1,5 @@
 use celestia_types::RowProof;
 use celestia_types::nmt::{Namespace, NamespaceProof};
-use celestia_types::RowProof;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "utils")]
