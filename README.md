@@ -195,4 +195,4 @@ just
 
 ## License
 
-TODO
+[MIT License](./LICENSE)
