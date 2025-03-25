@@ -23,7 +23,6 @@ bincode = {workspace = true}
 tonic-build = {workspace = true, features=["prost"], optional = true}
 
 [features]
-default = ["grpc", "utils"]
+default = ["grpc"]
 
-utils = ["tendermint-proto"]
 grpc = ["tonic", "prost", "tonic-build"]

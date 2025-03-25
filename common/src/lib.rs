@@ -2,9 +2,7 @@ use celestia_types::RowProof;
 use celestia_types::nmt::{Namespace, NamespaceProof};
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "utils")]
 mod error;
-#[cfg(feature = "utils")]
 pub use error::InclusionServiceError;
 
 #[cfg(feature = "grpc")]
