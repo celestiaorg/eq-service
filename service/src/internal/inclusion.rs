@@ -8,11 +8,11 @@ use sha3::Keccak256;
 use sha3::{Digest, Sha3_256};
 use sled::{Transactional, Tree as SledTree};
 use sp1_sdk::{
-    NetworkProver as SP1NetworkProver, Prover, SP1ProofWithPublicValues, SP1Stdin,
-    network::Error as SP1NetworkError,
+    network::Error as SP1NetworkError, NetworkProver as SP1NetworkProver, Prover,
+    SP1ProofWithPublicValues, SP1Stdin,
 };
 use std::sync::Arc;
-use tokio::sync::{OnceCell, mpsc};
+use tokio::sync::{mpsc, OnceCell};
 
 /// Hardcoded ELF binary for the crate `program-keccak-inclusion`
 static KECCAK_INCLUSION_ELF: &[u8] = include_bytes!(

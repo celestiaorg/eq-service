@@ -2,7 +2,7 @@
 #![no_main]
 
 sp1_zkvm::entrypoint!(main);
-use celestia_types::{AppVersion, ShareProof, blob::Blob, hash::Hash};
+use celestia_types::{blob::Blob, hash::Hash, AppVersion, ShareProof};
 use eq_common::{KeccakInclusionToDataRootProofInput, KeccakInclusionToDataRootProofOutput};
 use sha3::{Digest, Keccak256};
 

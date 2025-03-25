@@ -926,7 +926,7 @@ dependencies = [
 
 [[package]]
 name = "blob-tool"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "base64 0.22.1",
  "celestia-rpc",
@@ -1930,7 +1930,7 @@ dependencies = [
 
 [[package]]
 name = "eq-common"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bincode",
  "celestia-types",
@@ -1946,7 +1946,7 @@ dependencies = [
 
 [[package]]
 name = "eq-program-keccak-inclusion"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "celestia-types",
  "eq-common",
@@ -1959,7 +1959,7 @@ dependencies = [
 
 [[package]]
 name = "eq-sdk"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "base64 0.22.1",
  "celestia-types",
@@ -1972,7 +1972,7 @@ dependencies = [
 
 [[package]]
 name = "eq-service"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -4830,7 +4830,7 @@ checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 
 [[package]]
 name = "runner-keccak-inclusion"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "eq-common",
  "serde_json",

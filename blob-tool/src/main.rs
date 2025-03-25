@@ -2,10 +2,10 @@
 
 use base64::Engine;
 use celestia_rpc::{BlobClient, Client, HeaderClient, ShareClient};
-use celestia_types::ShareProof;
 use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
-use clap::{Parser, command};
+use celestia_types::ShareProof;
+use clap::{command, Parser};
 use eq_common::KeccakInclusionToDataRootProofInput;
 use sha3::{Digest, Keccak256};
 
