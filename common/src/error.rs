@@ -29,4 +29,7 @@ pub enum InclusionServiceError {
 
     #[error("Invalid parameter: {0}")]
     InvalidParameter(String),
+
+    #[error("Failed to deserialize KeccakInclusionToDataRootProofOutput")]
+    OutputDeserializationError,
 }

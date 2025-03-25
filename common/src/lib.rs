@@ -1,4 +1,3 @@
-use alloy::sol;
 use celestia_types::RowProof;
 use celestia_types::nmt::{Namespace, NamespaceProof};
 use serde::{Deserialize, Serialize};
@@ -34,33 +33,44 @@ pub struct KeccakInclusionToDataRootProofInput {
 
 /// Expecting bytes:
 /// (keccak_hash: [u8; 32], pub data_root: [u8; 32])
-pub type KeccakInclusionToDataRootProofOutput = sol! {
-    tuple(bytes32, bytes32)
-};
+pub struct KeccakInclusionToDataRootProofOutput {
+    pub keccak_hash: [u8; 32],
+    pub data_root: [u8; 32],
+}
+impl KeccakInclusionToDataRootProofOutput {
+    // Simple encoding, rather than use any Ethereum libraries
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut encoded = Vec::new();
+        encoded.extend_from_slice(&self.keccak_hash);
+        encoded.extend_from_slice(&self.data_root);
+        encoded
+    }
+
+    pub fn from_bytes(data: &[u8]) -> Result<Self, InclusionServiceError> {
+        if data.len() != 64 {
+            return Err(InclusionServiceError::OutputDeserializationError);
+        }
+        let decoded = KeccakInclusionToDataRootProofOutput {
+            keccak_hash: data[0..32].try_into().map_err(|_| InclusionServiceError::OutputDeserializationError)?,
+            data_root: data[32..64].try_into().map_err(|_| InclusionServiceError::OutputDeserializationError)?,
+        };
+        Ok(decoded)
+    }
+}
 
 #[cfg(test)]
 mod test {
     use super::*;
 
-    use alloy_primitives::FixedBytes;
-    use alloy_sol_types::{SolType, SolValue};
-
     #[test]
     fn test_abi_encoding() {
-        let f: FixedBytes<32> = FixedBytes::from([0; 32]);
-        let output = (
-            FixedBytes::<32>::from([0; 32]),
-            FixedBytes::<32>::from([0; 32]),
-        );
-        let encoded = output.abi_encode();
-        // Interestingly, this line doesn't work
-        // You can't get a KeccakInclusionToDataRootProofOutput by calling KeccakInclusionToDataRootProofOutput::abi_decode
-        // However, we can get a tuple of alloy_primitives::FixedBytes<32>
-        // which is weird but fine
-        /*let decoded: KeccakInclusionToDataRootProofOutput = KeccakInclusionToDataRootProofOutput::abi_decode(&encoded, false)
-        .unwrap();*/
-        let decoded: (FixedBytes<32>, FixedBytes<32>) =
-            KeccakInclusionToDataRootProofOutput::abi_decode(&encoded, true).unwrap();
-        assert_eq!(output, decoded);
+        let output = KeccakInclusionToDataRootProofOutput {
+            keccak_hash: [0; 32],
+            data_root: [0; 32],
+        };
+        let encoded = output.to_bytes();
+        let decoded = KeccakInclusionToDataRootProofOutput::from_bytes(&encoded).unwrap();
+        assert_eq!(output.keccak_hash, decoded.keccak_hash);
+        assert_eq!(output.data_root, decoded.data_root);
     }
 }
