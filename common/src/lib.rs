@@ -37,7 +37,7 @@ pub struct KeccakInclusionToDataRootProofOutput {
 }
 impl KeccakInclusionToDataRootProofOutput {
     // Simple encoding, rather than use any Ethereum libraries
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_vec(&self) -> Vec<u8> {
         let mut encoded = Vec::new();
         encoded.extend_from_slice(&self.keccak_hash);
         encoded.extend_from_slice(&self.data_root);
@@ -66,7 +66,7 @@ mod test {
             keccak_hash: [0; 32],
             data_root: [0; 32],
         };
-        let encoded = output.to_bytes();
+        let encoded = output.to_vec();
         let decoded = KeccakInclusionToDataRootProofOutput::from_bytes(&encoded).unwrap();
         assert_eq!(output.keccak_hash, decoded.keccak_hash);
         assert_eq!(output.data_root, decoded.data_root);

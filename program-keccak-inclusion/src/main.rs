@@ -52,7 +52,7 @@ pub fn main() {
         keccak_hash: computed_keccak_hash,
         data_root: input.data_root,
     }
-    .to_bytes();
+    .to_vec();
     sp1_zkvm::io::commit_slice(&output);
     println!("cycle-tracker-end: commit output");
 }
