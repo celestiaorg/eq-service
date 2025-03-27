@@ -1,5 +1,5 @@
-use celestia_types::RowProof;
 use celestia_types::nmt::{Namespace, NamespaceProof};
+use celestia_types::RowProof;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "host")]
@@ -52,8 +52,12 @@ impl KeccakInclusionToDataRootProofOutput {
             return Err(InclusionServiceError::OutputDeserializationError);
         }
         let decoded = KeccakInclusionToDataRootProofOutput {
-            keccak_hash: data[0..32].try_into().map_err(|_| InclusionServiceError::OutputDeserializationError)?,
-            data_root: data[32..64].try_into().map_err(|_| InclusionServiceError::OutputDeserializationError)?,
+            keccak_hash: data[0..32]
+                .try_into()
+                .map_err(|_| InclusionServiceError::OutputDeserializationError)?,
+            data_root: data[32..64]
+                .try_into()
+                .map_err(|_| InclusionServiceError::OutputDeserializationError)?,
         };
         Ok(decoded)
     }
