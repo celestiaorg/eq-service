@@ -22,6 +22,7 @@ bincode = {workspace = true}
 tonic-build = {workspace = true, features=["prost"], optional = true}
 
 [features]
-default = ["grpc"]
+default = ["grpc", "host"]
 
 grpc = ["tonic", "prost", "tonic-build"]
+host = []

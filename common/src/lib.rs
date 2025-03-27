@@ -2,7 +2,9 @@ use celestia_types::RowProof;
 use celestia_types::nmt::{Namespace, NamespaceProof};
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "host")]
 mod error;
+#[cfg(feature = "host")]
 pub use error::InclusionServiceError;
 
 #[cfg(feature = "grpc")]
@@ -44,6 +46,7 @@ impl KeccakInclusionToDataRootProofOutput {
         encoded
     }
 
+    #[cfg(feature = "host")]
     pub fn from_bytes(data: &[u8]) -> Result<Self, InclusionServiceError> {
         if data.len() != 64 {
             return Err(InclusionServiceError::OutputDeserializationError);
@@ -61,6 +64,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg(feature = "host")]
     fn test_abi_encoding() {
         let output = KeccakInclusionToDataRootProofOutput {
             keccak_hash: [0; 32],

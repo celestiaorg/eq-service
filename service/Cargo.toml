@@ -8,7 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-eq-common.workspace = true
+eq-common = {workspace = true, features = ["host"]}
 eq-sdk.workspace = true
 
 serde = { workspace = true, features = ["derive"] }
