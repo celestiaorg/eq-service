@@ -97,7 +97,9 @@ grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
 
 ## Operate
 
-Most users will want to pull and run this service via the [container registry](#containerization)
+Most users will want to pull and run this service using Docker or Podman via container registry, see [running containers](#running-containers).
+
+To build and run, see [developing instructions](#develop)
 
 ### Requirements
 
@@ -126,32 +128,22 @@ cp example.env .env
 # edit .env
 ```
 
-### Containerization
+### Running containers
 
-Docker and [Podman](https://podman.io/) is configured in [Dockerfile](./Dockerfile) to build an image with that includes a few caching layers to minimize development time & final image size -> publish where possible. To build and run in a container:
+The images are available:
+
+1. <https://ghcr.io/celestiaorg/eq-service>
+1. <https://hub.docker.com/r/celestiaorg/eq-service>
 
 ```sh
-# Using just
-just docker-build
-just docker-run
+# ghcr:
+docker pull ghcr.io/celestiaorg/eq-service:latest
 
-
-# Manually
-
-## Build
-[docker|podman] build -t eq_service .
-
-## Setup
-source .env
-mkdir -p $EQ_DB_PATH
-
-## Run (example)
-[docker|podman] run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
+# Docker hub:
+docker pull celestiaorg/eq-service:latest
 ```
 
-Importantly, the DB should persist, and the container must have access to connect to the DA light client (likely port 26658) and Succinct network ports (HTTPS over 443).
-
-The images are built and published for [releases](https://github.com/celestiaorg/eq-service/releases) and available to pull from here: TODO
+_Don't forget you need to [configure your environment](#configure)_.
 
 ## Develop
 
@@ -176,7 +168,7 @@ Then:
    - See the [How-to-guides on nodes](https://docs.celestia.org/how-to-guides/light-node) to run one yourself, or choose a provider & set in `env`.
    - **NOTE:** You _must_ have the node synced back to the oldest possible height you may encounter in calling this service for it to fulfill that request.
 
-1. [Configure required env variables](#operate)
+1. [Configure required env variables](#configure)
 
 1. Build and run the service
    ```sh
@@ -192,6 +184,33 @@ There are many other helper scripts exposed in the [justfile](./justfile), get a
 # Print just recipes
 just
 ```
+
+### Containerization
+
+Docker and [Podman](https://podman.io/) are configured in [Dockerfile](./Dockerfile) to build an image with that includes a few caching layers to minimize development time & final image size -> publish where possible. To build and run in a container:
+
+```sh
+# Using just
+just docker-build
+just docker-run
+
+
+# Manually
+
+## Build
+[docker|podman] build -t eq_service .
+
+## Setup
+source .env
+mkdir -p $EQ_DB_PATH
+
+## Run (example)
+[docker|podman] run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq_service
+```
+
+Importantly, the DB should persist, and the container must have access to connect to the DA light client (likely port 26658) and Succinct network ports (HTTPS over 443).
+
+The images are built and published for [releases](https://github.com/celestiaorg/eq-service/releases) - see [running containers](#running-containers) for how to pull them.
 
 ## License
 
