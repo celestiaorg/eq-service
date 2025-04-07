@@ -4,7 +4,7 @@ FROM rust:latest AS build-env
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive \
   apt-get install --no-install-recommends --assume-yes \
-    protobuf-compiler \
+  protobuf-compiler \
   && rm -rf /var/lib/apt/lists/*
 
 # Install SP1 toolchain (this is done early to benefit from caching)
@@ -32,11 +32,11 @@ COPY program-keccak-inclusion/Cargo.toml ./program-keccak-inclusion/
 
 # Create dummy targets for each workspace member so that cargo fetch can succeed.
 RUN mkdir -p service/src && echo 'fn main() {}' > service/src/main.rs && \
-    mkdir -p common/src && echo 'fn main() {}' > common/src/lib.rs && \
-    mkdir -p sdk/src && echo 'fn main() {}' > sdk/src/lib.rs && \
-    mkdir -p runner-keccak-inclusion/src && echo 'fn main() {}' > runner-keccak-inclusion/src/main.rs && \
-    mkdir -p blob-tool/src && echo 'fn main() {}' > blob-tool/src/main.rs && \
-    mkdir -p program-keccak-inclusion/src && echo 'fn main() {}' > program-keccak-inclusion/src/main.rs
+  mkdir -p common/src && echo 'fn main() {}' > common/src/lib.rs && \
+  mkdir -p sdk/src && echo 'fn main() {}' > sdk/src/lib.rs && \
+  mkdir -p runner-keccak-inclusion/src && echo 'fn main() {}' > runner-keccak-inclusion/src/main.rs && \
+  mkdir -p blob-tool/src && echo 'fn main() {}' > blob-tool/src/main.rs && \
+  mkdir -p program-keccak-inclusion/src && echo 'fn main() {}' > program-keccak-inclusion/src/main.rs
 
 # Run cargo fetch so that dependency downloads are cached in the image.
 RUN cargo fetch
@@ -57,12 +57,12 @@ COPY . .
 # Build ZK Program ELF using SP1 toolchain.
 # Use BuildKit 
 RUN --mount=type=cache,id=target_cache,target=/app/target \
-    /root/.sp1/bin/cargo-prove prove build -p eq-program-keccak-inclusion
+  /root/.sp1/bin/cargo-prove prove build -p eq-program-keccak-inclusion
 
 # Finally, compile the project in release mode.
 RUN --mount=type=cache,id=target_cache,target=/app/target \
-    cargo build --release && \
-    cp /app/target/release/eq-service /app/eq-service
+  cargo build --release && \
+  cp /app/target/release/eq-service /app/eq-service
 
 ####################################################################################################
 ## Final stage: Prepare the runtime image
@@ -73,6 +73,10 @@ FROM debian:bookworm-slim
 # FIXME: we don't need to do this, so long as the image we use has updated ca-certs
 # <https://github.com/succinctlabs/sp1/issues/2075#issuecomment-2704953661>
 # RUN apt update && apt install -y libcurl4 && rm -rf /var/lib/apt/lists/*
+
+# Copy system CA certs
+# Without them, prover network requests will fail: <https://github.com/succinctlabs/sp1/issues/2075>
+COPY --from=build-env /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 COPY --from=builder /app/eq-service ./
 
