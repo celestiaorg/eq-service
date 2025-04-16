@@ -46,7 +46,7 @@ _pre-build:
 _pre-run:
     #!/usr/bin/env bash
     if ! {{ path_exists(env-settings) }}; then
-        echo -e "⛔ Missing required `.env` file.\nCreate one with:\n\n\tcp example.env .env\n\nAnd then edit to adjust settings"
+        echo -e "⛔ Missing required \`{{ env-settings }}\` file.\nCreate one with:\n\n\tcp example.env .env\n\nAnd then edit to adjust settings"
         exit 1
     fi
 
@@ -54,21 +54,21 @@ _pre-run:
 run-examples *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
-    source .env
+    source {{ env-settings }}
     cargo run -p eq-sdk --example client -- {{ FLAGS }}
 
 # Run in release mode, with optimizations AND debug logs
 run-release *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
-    source .env
+    source {{ env-settings }}
     RUST_LOG=eq_service=debug cargo r -r -- {{ FLAGS }}
 
 # Run in debug mode, with extra pre-checks, no optimizations
 run-debug *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
-    source .env
+    source {{ env-settings }}
     # Check node up with https://github.com/vi/websocat?tab=readme-ov-file#from-source
     if ! {{ path_exists(websocat-path) }}; then
         echo -e "⛔ Missing websocat tool.\nRun `cargo install websocat` to install"
@@ -90,9 +90,9 @@ docker-build:
 docker-run:
     #!/usr/bin/env bash
     set -a  # Auto export vars
-    source .env
+    source {{ env-settings }}
     mkdir -p $EQ_DB_PATH
-    docker run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
+    docker run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file {{ env-settings }} --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
 
 # Build docker image & tag `eq-service`
 podman-build:
@@ -104,7 +104,7 @@ podman-run:
     set -a  # Auto export vars
     source .env
     mkdir -p $EQ_DB_PATH
-    podman run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file .env --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
+    podman run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file {{ env-settings }} --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
 
 # Build in debug mode, no optimizations
 build-debug: _pre-build
