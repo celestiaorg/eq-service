@@ -14,6 +14,16 @@ pub struct GetKeccakInclusionRequest {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProofWithPublicValues {
+    /// The actual proof data
+    #[prost(bytes = "vec", tag = "1")]
+    pub proof_data: ::prost::alloc::vec::Vec<u8>,
+    /// The public values used to generate the proof
+    #[prost(bytes = "vec", tag = "2")]
+    pub public_values: ::prost::alloc::vec::Vec<u8>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetKeccakInclusionResponse {
     #[prost(enumeration = "get_keccak_inclusion_response::Status", tag = "1")]
     pub status: i32,
@@ -84,9 +94,9 @@ pub mod get_keccak_inclusion_response {
         /// When ZKP_PENDING, this is the proof request/job id on the prover network
         #[prost(bytes, tag = "2")]
         ProofId(::prost::alloc::vec::Vec<u8>),
-        /// When ZKP_FINISHED, this is the proof data
-        #[prost(bytes, tag = "3")]
-        Proof(::prost::alloc::vec::Vec<u8>),
+        /// When ZKP_FINISHED, this contains both proof data and public values
+        #[prost(message, tag = "3")]
+        Proof(super::ProofWithPublicValues),
         /// Used when status is RETRYABLE_FAILURE or PERMANENT_FAILURE, this includes details why
         #[prost(string, tag = "4")]
         ErrorMessage(::prost::alloc::string::String),

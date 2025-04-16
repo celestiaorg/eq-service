@@ -4,10 +4,16 @@ package eqs;
 service Inclusion {
     rpc GetKeccakInclusion(GetKeccakInclusionRequest) returns (GetKeccakInclusionResponse);
 }
+
 message GetKeccakInclusionRequest {
     uint64 height = 1;             // Data Availability (DA) block height
     bytes namespace = 2;           // 32 byte DA namespace
     bytes commitment = 3;          // 32 byte DA blob commitment
+}
+
+message ProofWithPublicValues {
+    bytes proof_data = 1;          // The actual proof data
+    bytes public_values = 2;       // The public values used to generate the proof
 }
 
 message GetKeccakInclusionResponse {
@@ -22,7 +28,7 @@ message GetKeccakInclusionResponse {
     Status status = 1;
     oneof response_value {
         bytes proof_id = 2;        // When ZKP_PENDING, this is the proof request/job id on the prover network
-        bytes proof = 3;           // When ZKP_FINISHED, this is the proof data
+        ProofWithPublicValues proof = 3;  // When ZKP_FINISHED, this contains both proof data and public values
         string error_message = 4;  // Used when status is RETRYABLE_FAILURE or PERMANENT_FAILURE, this includes details why
         string status_message = 5; // Additional details on status of a request
     }

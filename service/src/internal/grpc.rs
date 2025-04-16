@@ -3,9 +3,10 @@ use std::sync::Arc;
 use log::{debug, error, info, warn};
 use tonic::{Request, Response, Status};
 
-use eq_common::eqs::inclusion_server::Inclusion;
+use eq_common::eqs::inclusion_server::{Inclusion};
 use eq_common::{KeccakInclusionToDataRootProofOutput};
 use eq_common::eqs::{
+    ProofWithPublicValues,
     get_keccak_inclusion_response::{ResponseValue, Status as ResponseStatus},
     GetKeccakInclusionRequest, GetKeccakInclusionResponse,
 };
@@ -53,20 +54,14 @@ impl Inclusion for InclusionServiceArc {
                 bincode::deserialize(&proof_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
                 JobStatus::ZkProofFinished(proof) => {
-                    let public_values_bytes = proof.public_values.to_vec();
-                    let proof_outputs = KeccakInclusionToDataRootProofOutput::from_bytes(&public_values_bytes)
-                        .map_err(|e| Status::internal(e.to_string()))?;
                     debug!("Job finished, returning proof");
-
-                    let mut proof_with_prefix_bytes = Vec::new();
-                    proof_with_prefix_bytes.extend_from_slice(&proof_outputs.data_root);
-                    proof_with_prefix_bytes.extend_from_slice(&proof_outputs.keccak_hash);
-                    proof_with_prefix_bytes.extend_from_slice(&bincode::serialize(&proof)
-                        .map_err(|e| Status::internal(e.to_string()))?);
 
                     return Ok(Response::new(GetKeccakInclusionResponse {
                         status: ResponseStatus::ZkpFinished as i32,
-                        response_value: Some(ResponseValue::Proof(proof_with_prefix_bytes)),
+                        response_value: Some(ResponseValue::Proof(ProofWithPublicValues {
+                            proof_data: proof.bytes(),
+                            public_values: proof.public_values.to_vec(),
+                        })),
                     }));
                 }
                 JobStatus::Failed(error, maybe_status) => {
