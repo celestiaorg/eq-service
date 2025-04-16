@@ -12,6 +12,7 @@ use sp1_sdk::{
     SP1ProofWithPublicValues, SP1Stdin,
 };
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{mpsc, OnceCell};
 
 /// Hardcoded ELF binary for the crate `program-keccak-inclusion`
@@ -438,6 +439,7 @@ impl InclusionService {
             .prove(&proof_setup.pk, &stdin)
             .groth16()
             .skip_simulation(false)
+            .timeout(Duration::from_secs(5)) // Don't hang too long on this. If it's gonna fail, fail fast.
             .request_async()
             .await
             // TODO: how to handle errors without a concrete type? Anyhow is not the right thing for us...
