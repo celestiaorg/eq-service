@@ -3,8 +3,7 @@ use std::sync::Arc;
 use log::{debug, error, info, warn};
 use tonic::{Request, Response, Status};
 
-use eq_common::eqs::inclusion_server::{Inclusion};
-use eq_common::{KeccakInclusionToDataRootProofOutput};
+use eq_common::eqs::inclusion_server::Inclusion;
 use eq_common::eqs::{
     ProofWithPublicValues,
     get_keccak_inclusion_response::{ResponseValue, Status as ResponseStatus},
@@ -78,7 +77,7 @@ impl Inclusion for InclusionServiceArc {
                         Some(retry_status) => {
                             warn!("Job is Retryable Failure, returning status & retrying");
                             // We retry errors on each call to the gRPC
-                            // for a specific [Job] by seding to the queue
+                            // for a specific [Job] by sending to the queue
                             match self.0.send_job_with_new_status(job_key, *retry_status, job) {
                                 Ok(_) => {
                                     return Ok(Response::new(GetKeccakInclusionResponse {

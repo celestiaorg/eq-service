@@ -283,7 +283,7 @@ impl InclusionService {
                     "Failed to convert header.dah.hash().as_bytes() to [u8; 32]".to_string(),
                 )
             })?,
-            keccak_hash: keccak_hash,
+            keccak_hash,
         };
 
         self.send_job_with_new_status(
@@ -367,7 +367,7 @@ impl InclusionService {
         }
     }
 
-    /// Helper function to handle error from a SP1 NetworkProver Clents.
+    /// Helper function to handle error from a SP1 NetworkProver Clients.
     /// Will finalize the job in an [JobStatus::Failed] state,
     /// that may be retryable.
     fn handle_zk_client_error(
@@ -381,19 +381,19 @@ impl InclusionService {
         match zk_client_error {
             SP1NetworkError::SimulationFailed | SP1NetworkError::RequestUnexecutable { .. } => {
                 e = InclusionServiceError::DaClientError(format!(
-                    "ZKP program critical failure: {zk_client_error} occured for {job:?} PLEASE REPORT!"
+                    "ZKP program critical failure: {zk_client_error} occurred for {job:?} PLEASE REPORT!"
                 ));
                 job_status = JobStatus::Failed(e.clone(), None);
             }
             SP1NetworkError::RequestUnfulfillable { .. } => {
                 e = InclusionServiceError::DaClientError(format!(
-                    "ZKP network failure: {zk_client_error} occured for {job:?} PLEASE REPORT!"
+                    "ZKP network failure: {zk_client_error} occurred  for {job:?} PLEASE REPORT!"
                 ));
                 job_status = JobStatus::Failed(e.clone(), None);
             }
             SP1NetworkError::RequestTimedOut { request_id } => {
                 e = InclusionServiceError::DaClientError(format!(
-                    "ZKP network: {zk_client_error} occured for {job:?}"
+                    "ZKP network: {zk_client_error} occurred  for {job:?}"
                 ));
 
                 let id = request_id
@@ -405,9 +405,9 @@ impl InclusionService {
             }
             SP1NetworkError::RpcError(_) | SP1NetworkError::Other(_) => {
                 e = InclusionServiceError::DaClientError(format!(
-                    "ZKP network failure: {zk_client_error} occured for {job:?} PLEASE REPORT!"
+                    "ZKP network failure: {zk_client_error} occurred  for {job:?} PLEASE REPORT!"
                 ));
-                // TODO: We cannot clone KeccakInclusionToDataRootProofInput thus we cannot insert into a JobStatus::DataAvalibile(proof_input)
+                // TODO: We cannot clone KeccakInclusionToDataRootProofInput thus we cannot insert into a JobStatus::DataAvailable(proof_input)
                 // So we just redo the work from scratch for the DA side as a stupid workaround
                 job_status =
                     JobStatus::Failed(e.clone(), Some(JobStatus::DataAvailabilityPending.into()));
@@ -564,7 +564,7 @@ impl InclusionService {
     }
 
     pub fn shutdown(&self) {
-        info!("Terminating worker,finishing prexisting jobs");
+        info!("Terminating worker,finishing preexisting jobs");
         let _ = self.job_sender.send(None); // Break loop in `job_worker`
     }
 }
