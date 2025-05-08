@@ -22,12 +22,20 @@ pub mod eqs {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct KeccakInclusionToDataRootProofInput {
+    #[serde(rename = "blob_data")]
     pub data: Vec<u8>,
+    
+    #[serde(rename = "blob_namespace")]
     pub namespace_id: Namespace,
+    
+    #[serde(rename = "nmt_multiproofs")]
     pub share_proofs: Vec<NamespaceProof>,
+    
+    #[serde(rename = "row_root_multiproof")]
     pub row_proof: RowProof,
-    pub data_root: [u8; 32],
-    pub keccak_hash: [u8; 32],
+    
+    pub data_root: [u8; 32], // already matches
+    pub keccak_hash: [u8; 32], // already matches
 }
 
 /// Expecting bytes:
