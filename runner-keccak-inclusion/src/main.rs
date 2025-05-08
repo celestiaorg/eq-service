@@ -14,7 +14,7 @@ fn main() {
     let input: KeccakInclusionToDataRootProofInput =
         serde_json::from_str(&input_json).expect("Failed deserializing proof input");
 
-    let client = ProverClient::builder().cpu().build();
+    let client = ProverClient::builder().mock().build();
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);
     // client
