@@ -5,9 +5,8 @@ use tonic::{Request, Response, Status};
 
 use eq_common::eqs::inclusion_server::Inclusion;
 use eq_common::eqs::{
-    ProofWithPublicValues,
     get_keccak_inclusion_response::{ResponseValue, Status as ResponseStatus},
-    GetKeccakInclusionRequest, GetKeccakInclusionResponse,
+    GetKeccakInclusionRequest, GetKeccakInclusionResponse, ProofWithPublicValues,
 };
 
 use celestia_types::{blob::Commitment, nmt::Namespace};
