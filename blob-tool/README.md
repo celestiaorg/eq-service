@@ -4,6 +4,10 @@ This utility is to help in **development & testing** basic operations with a Cel
 Given specifics about a datum, a NMT proof is saved to `./proof_input.json`.
 This JSON can be used in [another utility](../runner-keccak-inclusion) to **test creation of a ZK proof** that ultimately the [`eq-service` provides for it's users](../README.md).
 
+## Requirements
+
+You must run a local Celestia Node, hardcoded to use `ws://localhost:26658` to connect.
+
 ## Usage
 
 ```sh
@@ -13,9 +17,9 @@ This JSON can be used in [another utility](../runner-keccak-inclusion) to **test
 cargo r -- --height <integer> --namespace "hex string" --commitment "base64 string"
 
 # Known working example from the Mocha Testnet:
-# https://mocha-4.celenium.io/blob?commitment=Ok8KERqJ3my8Z/D4DX6DfUDaeoMR0iUlxOrX1YsrAg4=&hash=AAAAAAAAAAAAAAAAAAAAAAAAAMod4SoDpykQeR8=&height=4337783
-# The first commitment in https://mocha-4.celenium.io/tx/d88d60f4fb783cc24ab07688ed6f05a50e32d58823df00e2d99ffc5ad5f74b47
-cargo r -- --height 4337783 --namespace "ca1de12a03a72910791f" --commitment "Ok8KERqJ3my8Z/D4DX6DfUDaeoMR0iUlxOrX1YsrAg4="
+# https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
+# Namespace base64 = "Ucwac9Zflfa95g=="
+cargo r -- --height 4499999 --namespace "51cc1a73d65f95f6bde6" --commitment "S2iIifIPdAjQ33KPeyfAga26FSF3IL11WsCGtJKSOTA="
 
 # getting blob...
 # getting nmt multiproofs...

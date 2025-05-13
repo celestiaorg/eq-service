@@ -1,5 +1,5 @@
 /target
 /elf
 .env
-**/proof_input.json
+**/*.json
 *.log
