@@ -16,12 +16,12 @@ You must run a local Celestia Node, hardcoded to use `ws://localhost:26658` to c
 # Tesetnet: https://mocha-4.celenium.io/
 cargo r -- --height <integer> --namespace "hex string" --commitment "base64 string"
 
-# Known working example from the Mocha Testnet:
+# Known working example from the Mocha Testnet (~1.5MB):
 # https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
-# Namespace base64 = "Ucwac9Zflfa95g=="
-cargo r -- --height 4499999 --namespace "51cc1a73d65f95f6bde6" --commitment "S2iIifIPdAjQ33KPeyfAga26FSF3IL11WsCGtJKSOTA="
+cargo r -- --height 5967025 --namespace "c27fc4694d31d1" --commitment "Y+8haW3Hi89DdtT4AAgr1iZ4ELFbosTqF+UCnhc4adM="
 
-# getting blob...
-# getting nmt multiproofs...
-# Wrote proof input to proof_input.json
+# Known working example from the Mocha Testnet (~0.125MB):
+# https://mocha-4.celenium.io/tx/a54e3b86dc095180ecda631e67e25ef9d8450dc1de5bd2af4dc2cfa50b4b3ac4
+cargo r -- --height 6062832 --namespace "5d251311f25b13a549e0" --commitment "JPqS2PmVBNdyo8IadhIgIzvgbV99LQido2LAEaCp+vY="
+
 ```
