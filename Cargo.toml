@@ -1,5 +1,12 @@
 [workspace]
-members = ["service", "program-keccak-inclusion", "common", "blob-tool", "runner-keccak-inclusion", "sdk"]
+members = [
+  "service",
+  "program-keccak-inclusion",
+  "common",
+  "blob-tool",
+  "runner-keccak-inclusion",
+  "sdk",
+]
 default-members = ["service"]
 resolver = "2"
 
@@ -18,8 +25,8 @@ eq-sdk = { path = "sdk", version = "0.1.6" }
 celestia-types = "0.10"
 celestia-rpc = "0.9"
 nmt-rs = "0.2"
-sp1-zkvm = {version="4.0", features=["verify"]}
-sp1-sdk = {version="4.0"}
+sp1-zkvm = { version = "4.0", features = ["verify"] }
+sp1-sdk = { version = "4.0" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 sha3 = "0.10"
 tendermint-proto = "0.40"
@@ -31,7 +38,7 @@ serde_json = "1.0"
 thiserror = "2.0"
 sled = "0.34"
 prost = "0.12.6"
-tonic = { version = "0.11.0", default-features = false, features=["codegen"]}
+tonic = { version = "0.11.0", default-features = false, features = ["codegen"] }
 tonic-build = { version = "0.11.0", default-features = false }
 env_logger = "0.11"
 log = "0.4"
@@ -44,3 +51,12 @@ sha2-v0-9-9 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", packag
 sha2-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.10.8-sp1-4.0.0" }
 tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", tag = "patch-2.0.2-sp1-4.0.0" }
 curve25519-dalek-ng = { git = "https://github.com/sp1-patches/curve25519-dalek-ng", tag = "patch-4.1.1-sp1-4.0.0" }
+
+# Greatly reduces cycle count when executing the zkVM program
+# Also reflected in sp1/build.rs
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = 1
+

@@ -1,7 +1,7 @@
 default:
     @just --list
 
-alias e := run-examples
+alias e := run-sdk-examples
 alias r := run-debug
 alias rr := run-release
 alias db := docker-build
@@ -17,7 +17,7 @@ zkvm-elf-path := "./target/elf-compilation/riscv32im-succinct-zkvm-elf/release/e
 env-settings := "./.env"
 sp1up-path := shell("which sp1up")
 cargo-prove-path := shell("which cargo-prove")
-websocat-path := shell("which cargo-prove")
+websocat-path := shell("which websocat")
 
 # Install SP1 tooling & more
 initial-config-installs:
@@ -39,9 +39,7 @@ _pre-build:
         echo -e "⛔ Missing zkVM Compiler.\nRun `just initial-config-installs` to prepare your environment"
         exit 1
     fi
-    if ! {{ path_exists(zkvm-elf-path) }}; then
-        cargo prove build -p eq-program-keccak-inclusion
-    fi
+    just build-elf
 
 _pre-run:
     #!/usr/bin/env bash
@@ -50,8 +48,29 @@ _pre-run:
         exit 1
     fi
 
-# Run examples
-run-examples *FLAGS: _pre-build _pre-run
+# Build only the zkVM ELF program in release mode (optimized)
+build-elf:
+    #!/usr/bin/env bash
+    if ! {{ path_exists(cargo-prove-path) }}; then 
+        echo -e "⛔ Missing zkVM Compiler.\nRun \`just initial-config-installs\` to prepare your environment"; 
+        exit 1; 
+    fi; 
+    source {{ env-settings }}; 
+    if [ ! -f "$ZK_PROGRAM_ELF_PATH" ]; then 
+        echo -e "Can't find ELF at \`$ZK_PROGRAM_ELF_PATH\`.\nAttempting to build it..."; 
+        RUSTFLAGS="-Copt-level=3 -Clto=fat -Ccodegen-units=1 -Cdebuginfo=1 -Cembed-bitcode=yes" cargo prove build -p eq-program-keccak-inclusion 
+    else 
+        echo "✅ ELF Exists, skipping SP1 build"; 
+    fi
+
+# Print cycle counts to stdout for a given proof file. Usage: just bench-zkvm-with blob-tool/proof_input.json
+bench-zkvm-with *FLAGS: _pre-build _pre-run
+    #!/usr/bin/env bash
+    set -a  # Auto export vars
+    SP1_PROVER=mock # We just want cycles, not proofs
+    RUST_LOG=info cargo run -p runner-keccak-inclusion -- {{ FLAGS }}
+
+run-sdk-examples *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
     source {{ env-settings }}
