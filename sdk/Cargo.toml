@@ -5,15 +5,15 @@ version.workspace = true
 license.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "Celestia Equivalence Service SDK to build clients and integrations to for a running instance of the service" 
+description = "Celestia Equivalence Service SDK to build clients and integrations to for a running instance of the service"
 documentation = "https://docs.rs/eq-sdk"
- 
+
 [dependencies]
 eq-common.workspace = true
 
-tonic = {workspace = true, features = ["transport"]}
-serde = {workspace = true, features = ["derive"]}
-celestia-types = {workspace = true}
-base64 = {workspace = true}
-tokio = {workspace = true}
-log = {workspace = true}
+tonic = { workspace = true, features = ["transport"] }
+serde = { workspace = true, features = ["derive"] }
+celestia-types = { workspace = true }
+base64 = { workspace = true }
+tokio = { workspace = true }
+log = { workspace = true }
