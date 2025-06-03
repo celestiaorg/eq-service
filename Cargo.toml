@@ -43,7 +43,7 @@ tonic-build = { version = "0.11.0", default-features = false }
 env_logger = "0.11"
 log = "0.4"
 base64 = "0.22"
-jsonrpsee = { version = "0.24", default-features = false, features = ["ws-client"] }
+jsonrpsee = "0.25"
 
 [patch.crates-io]
 # TODO: update to 5.0?
