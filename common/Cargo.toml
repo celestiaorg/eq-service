@@ -9,17 +9,14 @@ description = "Celestia Equivalence Service shared types and traits"
 documentation = "https://docs.rs/eq-common"
 
 [dependencies]
-celestia-types = {workspace = true}
-nmt-rs = {workspace = true}
-serde = {workspace = true}
-sha3 = {workspace = true}
-thiserror = {workspace = true}
-prost = {workspace = true, optional = true}
-tonic = {workspace = true, features = ["codegen", "prost"], optional = true}
-bincode = {workspace = true}
+celestia-types = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+prost = { workspace = true, optional = true }
+tonic = { workspace = true, features = ["codegen", "prost"], optional = true }
 
 [build-dependencies]
-tonic-build = {workspace = true, features=["prost"], optional = true}
+tonic-build = { workspace = true, features = ["prost"], optional = true }
 
 [features]
 default = ["grpc", "host"]

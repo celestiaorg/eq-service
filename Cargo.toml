@@ -1,10 +1,17 @@
 [workspace]
-members = ["service", "program-keccak-inclusion", "common", "blob-tool", "runner-keccak-inclusion", "sdk"]
+members = [
+  "service",
+  "program-keccak-inclusion",
+  "common",
+  "blob-tool",
+  "runner-keccak-inclusion",
+  "sdk",
+]
 default-members = ["service"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 authors = ["Nuke <nuke-web3@proton.me>", "c-node <chuckhead7@gmail.com>"]
 license = "MIT"
@@ -12,34 +19,35 @@ homepage = "https://celestia.org"
 repository = "https://github.com/celestiaorg/eq-service"
 
 [workspace.dependencies]
-eq-common = { path = "common", version = "0.1.6" }
-eq-sdk = { path = "sdk", version = "0.1.6" }
+eq-common = { path = "common", version = "0.1.7" }
+eq-sdk = { path = "sdk", version = "0.1.7" }
 
 clap = "4.5"
-celestia-types = "0.10"
-celestia-rpc = "0.9"
+celestia-types = "0.11"
+celestia-rpc = "0.11"
 nmt-rs = "0.2"
-sp1-zkvm = {version="4.0", features=["verify"]}
-sp1-sdk = {version="4.0"}
+sp1-zkvm = { version = "5.0", features = ["verify"] }
+sp1-sdk = { version = "5.0" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 sha3 = "0.10"
 tendermint-proto = "0.40"
 tendermint = "0.40"
 bincode = "1.3"
-tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.45", features = ["macros", "rt-multi-thread"] }
 hex = "0.4"
 serde_json = "1.0"
 thiserror = "2.0"
 sled = "0.34"
 prost = "0.12.6"
-tonic = { version = "0.11.0", default-features = false, features=["codegen"]}
+tonic = { version = "0.11.0", default-features = false, features = ["codegen"] }
 tonic-build = { version = "0.11.0", default-features = false }
 env_logger = "0.11"
 log = "0.4"
 base64 = "0.22"
-jsonrpsee = "0.24"
+jsonrpsee = "0.25"
 
 [patch.crates-io]
+# TODO: update to 5.0?
 sha3-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha3", branch = "patch-sha3-v0.10.8" }
 sha2-v0-9-9 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.9.9-sp1-4.0.0" }
 sha2-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.10.8-sp1-4.0.0" }

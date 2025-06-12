@@ -9,11 +9,8 @@ publish = false
 
 [dependencies]
 # TODO: use workspace version, cannot override default feats though... 
-eq-common = {path = "../common", default-features = false}
+eq-common = { path = "../common", default-features = false }
 
-sp1-zkvm = {workspace = true}
-celestia-types = {workspace = true}
-nmt-rs = {workspace = true}
-tendermint = {workspace = true}
-tendermint-proto = {workspace = true}
-sha3 = {workspace = true}
+sp1-zkvm = { workspace = true }
+celestia-types = { workspace = true }
+sha3 = { workspace = true }

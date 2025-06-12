@@ -20,7 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("NETWORK_PRIVATE_KEY for Succinct Prover env var required");
     let da_node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN")
         .expect("CELESTIA_NODE_AUTH_TOKEN env var required");
-    let da_node_ws = std::env::var("CELESTIA_NODE_WS").expect("CELESTIA_NODE_WS env var required");
+    let da_node_ws =
+        std::env::var("CELESTIA_NODE_HTTP").expect("CELESTIA_NODE_HTTP env var required");
     let db_path = std::env::var("EQ_DB_PATH").expect("EQ_DB_PATH env var required");
     let service_socket: std::net::SocketAddr = std::env::var("EQ_SOCKET")
         .expect("EQ_SOCKET env var required")
