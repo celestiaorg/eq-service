@@ -1568,12 +1568,9 @@ dependencies = [
 name = "eq-common"
 version = "0.1.7"
 dependencies = [
- "bincode",
  "celestia-types",
- "nmt-rs",
  "prost 0.12.6",
  "serde",
- "sha3",
  "thiserror 2.0.12",
  "tonic 0.11.0",
  "tonic-build",
@@ -1585,11 +1582,8 @@ version = "0.1.7"
 dependencies = [
  "celestia-types",
  "eq-common",
- "nmt-rs",
  "sha3",
  "sp1-zkvm",
- "tendermint",
- "tendermint-proto",
 ]
 
 [[package]]
@@ -1599,7 +1593,6 @@ dependencies = [
  "base64 0.22.1",
  "celestia-types",
  "eq-common",
- "log",
  "serde",
  "tokio",
  "tonic 0.11.0",
@@ -1609,7 +1602,6 @@ dependencies = [
 name = "eq-service"
 version = "0.1.7"
 dependencies = [
- "base64 0.22.1",
  "bincode",
  "celestia-rpc",
  "celestia-types",
