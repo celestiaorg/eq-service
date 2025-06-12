@@ -1,24 +1,55 @@
+use clap::Parser;
 use eq_sdk::{types::BlobId, EqClient};
 use tonic::transport::Endpoint;
 
+#[derive(Parser, Debug)]
+#[command(author, version)]
+#[command(disable_help_flag(true))]
+struct Args {
+    /// RPC endpoint (e.g. "127.0.0.1:50051" or "http://…")
+    #[arg(short, long, env = "EQ_SOCKET")]
+    socket: String,
+
+    /// Block height (u64)
+    #[arg(short = 'h', long)]
+    height: u64,
+
+    /// Namespace (base64-encoded)
+    #[arg(short, long)]
+    namespace: String,
+
+    /// Commitment (base64-encoded, 32 bytes)
+    #[arg(short, long)]
+    commitment: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let service_socket =
-        "http://".to_string() + &std::env::var("EQ_SOCKET").expect("EQ_SOCKET env var required");
-    let channel = Endpoint::from_shared(service_socket)
-        .map_err(|e| format!("gRPC error: {e}"))?
+    let args = Args::parse();
+
+    // Build a valid URL for tonic:
+    let url = if args.socket.starts_with("http") {
+        args.socket.clone()
+    } else {
+        format!("http://{}", args.socket)
+    };
+
+    // Connect
+    let channel = Endpoint::from_shared(url)?
         .connect()
         .await
-        .map_err(|e| format!("gRPC error: {e}"))?;
+        .map_err(|e| format!("gRPC connect error: {e}"))?;
     let client = EqClient::new(channel);
 
-    // "height": 4409088, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s="
-    let blob_id: BlobId = "4409088:XSUTEfJbE6VJ4A==:DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s="
-        .parse::<BlobId>()
-        .map_err(|e| format!("Input error: {e}"))?;
+    // Reconstruct the canonical "height:namespace:commitment" string
+    let blob_str = format!("{}:{}:{}", args.height, args.namespace, args.commitment);
 
-    let response = client.get_keccak_inclusion(&blob_id).await?;
+    // And hand it off to your existing BlobId::from_str impl:
+    let blob_id: BlobId = blob_str.parse()?;
 
-    dbg!("{:?}", response);
+    // Call the RPC
+    let resp = client.get_keccak_inclusion(&blob_id).await?;
+    println!("{:#?}", resp);
+
     Ok(())
 }

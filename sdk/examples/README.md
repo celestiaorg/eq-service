@@ -9,6 +9,9 @@ These typically require a running [eq-service](../../service) instance , see the
 ```sh
 # Define and source required vars in .env
 set -a
-source .env
-cargo run -p eq-sdk --example client
+source ../.env
+
+# https://mocha.celenium.io/tx/c3c301fe579feb908fe02e2e8549c38f23707d30a3d4aa73e26402d854ff9104
+# "height": 4409088, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s="
+cargo run --example client -- --socket $EQ_SOCKET --height 4409088 --namespace XSUTEfJbE6VJ4A== --commitment DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s=
 ```

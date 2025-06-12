@@ -1953,6 +1953,7 @@ version = "0.1.6"
 dependencies = [
  "base64 0.22.1",
  "celestia-types",
+ "clap",
  "eq-common",
  "log",
  "serde",

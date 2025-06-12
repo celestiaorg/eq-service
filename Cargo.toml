@@ -15,6 +15,7 @@ repository = "https://github.com/celestiaorg/eq-service"
 eq-common = { path = "common", version = "0.1.6" }
 eq-sdk = { path = "sdk", version = "0.1.6" }
 
+clap = "4.5"
 celestia-types = "0.10"
 celestia-rpc = "0.9"
 nmt-rs = "0.2"
