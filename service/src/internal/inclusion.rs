@@ -444,9 +444,9 @@ impl InclusionService {
             .await
             // TODO: how to handle errors without a concrete type? Anyhow is not the right thing for us...
             .map_err(|e| {
-                log::info!("Error: {e:?}");
+                info!("Error: {e:?}");
                 let down = e.downcast_ref::<SP1NetworkError>();
-                log::info!("Down: {down:?}");
+                info!("Down: {down:?}");
                 if let Some(down) = e.downcast_ref::<SP1NetworkError>() {
                     return self.handle_zk_client_error(down, job, job_key);
                 }
