@@ -132,19 +132,15 @@ impl InclusionService {
                         .await
                     {
                         Ok(zk_job_id) => {
+                            debug!("Proof request {zk_job_id:?} started");
                             job_status = JobStatus::ZkProofPending(zk_job_id);
                             self.send_job_with_new_status(job_key, job_status, job)?;
                         }
                         Err(e) => {
                             error!("{job:?} failed progressing DataAvailable: {e}");
-                            job_status = JobStatus::Failed(
-                                e,
-                                Some(JobStatus::DataAvailable(proof_input).into()),
-                            );
-                            self.finalize_job(&job_key, job_status)?;
+                            // NOTE: we internally finalize the job in `handle_da_client_error`
                         }
                     };
-                    debug!("ZK request sent");
                 }
                 JobStatus::ZkProofPending(zk_request_id) => {
                     debug!("ZK request waiting");
@@ -156,14 +152,9 @@ impl InclusionService {
                         }
                         Err(e) => {
                             error!("{job:?} failed progressing ZkProofPending: {e}");
-                            job_status = JobStatus::Failed(
-                                e,
-                                Some(JobStatus::ZkProofPending(zk_request_id).into()),
-                            );
-                            self.finalize_job(&job_key, job_status)?;
+                            // NOTE: we internally finalize the job in `handle_zk_client_error`
                         }
                     }
-                    debug!("ZK request fulfilled");
                 }
                 _ => error!("Queue has INVALID status! Finished jobs stuck in queue!"),
             }
@@ -381,31 +372,29 @@ impl InclusionService {
         let (e, job_status);
         match zk_client_error {
             SP1NetworkError::SimulationFailed | SP1NetworkError::RequestUnexecutable { .. } => {
-                e = InclusionServiceError::DaClientError(format!(
+                e = InclusionServiceError::ZkClientError(format!(
                     "ZKP program critical failure: {zk_client_error} occurred for {job:?} PLEASE REPORT!"
                 ));
                 job_status = JobStatus::Failed(e.clone(), None);
             }
             SP1NetworkError::RequestUnfulfillable { .. } => {
-                e = InclusionServiceError::DaClientError(format!(
+                e = InclusionServiceError::ZkClientError(format!(
                     "ZKP network failure: {zk_client_error} occurred for {job:?} PLEASE REPORT!"
                 ));
                 job_status = JobStatus::Failed(e.clone(), None);
             }
-            SP1NetworkError::RequestTimedOut { request_id } => {
-                e = InclusionServiceError::DaClientError(format!(
-                    "ZKP network: {zk_client_error} occurred for {job:?}"
+            SP1NetworkError::RequestTimedOut { .. } => {
+                e = InclusionServiceError::ZkClientError(format!(
+                    "ZKP network: {zk_client_error} occurred for {job:?} - callback to start the job over"
                 ));
 
-                let id = request_id
-                    .as_slice()
-                    .try_into()
-                    .expect("request ID is always correct length");
+                // TODO: We cannot clone KeccakInclusionToDataRootProofInput thus we cannot insert into a JobStatus::DataAvailable(proof_input)
+                // So we just redo the work from scratch for the DA side as a stupid workaround
                 job_status =
-                    JobStatus::Failed(e.clone(), Some(JobStatus::ZkProofPending(id).into()));
+                    JobStatus::Failed(e.clone(), Some(JobStatus::DataAvailabilityPending.into()));
             }
             SP1NetworkError::RpcError(_) | SP1NetworkError::Other(_) => {
-                e = InclusionServiceError::DaClientError(format!(
+                e = InclusionServiceError::ZkClientError(format!(
                     "ZKP network failure: {zk_client_error} occurred for {job:?} PLEASE REPORT!"
                 ));
                 // TODO: We cannot clone KeccakInclusionToDataRootProofInput thus we cannot insert into a JobStatus::DataAvailable(proof_input)
