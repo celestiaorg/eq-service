@@ -11,7 +11,7 @@ These typically require a running [eq-service](../../service) instance , see the
 set -a
 source ../.env
 
-# https://mocha.celenium.io/tx/c3c301fe579feb908fe02e2e8549c38f23707d30a3d4aa73e26402d854ff9104
-# "height": 4409088, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s="
-cargo run --example client -- --socket $EQ_SOCKET --height 4409088 --namespace XSUTEfJbE6VJ4A== --commitment DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s=
+# https://mocha.celenium.io/tx/436f223bfa8c4adf1e1b79dde43a84918f3a50809583c57c33c1c079568b47cb
+# "height": 6608695, "namespace": "C8EGyFVBxOL3bA==", "commitment":"nPDyRXefks+koMJhy7LzN9269+Oz4PjcsAPk64ke85E="
+cargo run --example client -- --socket $EQ_SOCKET --height 6608695 --namespace C8EGyFVBxOL3bA== --commitment nPDyRXefks+koMJhy7LzN9269+Oz4PjcsAPk64ke85E=
 ```

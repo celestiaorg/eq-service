@@ -9,6 +9,7 @@ use internal::util::*;
 
 use log::{debug, error, info};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{mpsc, OnceCell};
 use tonic::transport::Server;
 
@@ -20,7 +21,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("NETWORK_PRIVATE_KEY for Succinct Prover env var required");
     let da_node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN")
         .expect("CELESTIA_NODE_AUTH_TOKEN env var required");
-    let da_node_ws =
+    let zk_proof_gen_timeout = Duration::from_secs(
+        std::env::var("PROOF_GEN_TIMEOUT_SECONDS")
+            .expect("PROOF_GEN_TIMEOUT_SECONDS env var required")
+            .parse()
+            .expect("PROOF_GEN_TIMEOUT_SECONDS must be integer"),
+    );
+    let da_node_http =
         std::env::var("CELESTIA_NODE_HTTP").expect("CELESTIA_NODE_HTTP env var required");
     let db_path = std::env::var("EQ_DB_PATH").expect("EQ_DB_PATH env var required");
     let service_socket: std::net::SocketAddr = std::env::var("EQ_SOCKET")
@@ -38,7 +45,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let inclusion_service = Arc::new(InclusionService::new(
         InclusionServiceConfig {
             da_node_token,
-            da_node_ws,
+            da_node_http,
+            zk_proof_gen_timeout,
         },
         OnceCell::new(),
         OnceCell::new(),

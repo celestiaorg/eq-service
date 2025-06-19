@@ -93,6 +93,12 @@ grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{"height": 4499999, "namespace": "Ucwac9Zflfa95g==", "commitment":"S2iIifIPdAjQ33KPeyfAga26FSF3IL11WsCGtJKSOTA="}' \
   -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+
+# https://mocha.celenium.io/tx/36797fdd1faa19ef8df1a3d3ec1b0278eb784b0a8cc3d5cd94db10b254f3eb78
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
+  -d '{"height": 6692080, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"iu5d9b+rtl5B/j2ju3hUqbJT0y/kcUV4gHUdCvU2Jn4="}' \
+  plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+
 ```
 
 ## Operate
