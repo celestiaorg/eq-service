@@ -51,6 +51,8 @@ pub fn main() {
     let output: Vec<u8> = KeccakInclusionToDataRootProofOutput {
         keccak_hash: computed_keccak_hash,
         data_root: input.data_root,
+        batch_number: input.batch_number,
+        chain_id: input.chain_id,
     }
     .to_vec();
     sp1_zkvm::io::commit_slice(&output);
