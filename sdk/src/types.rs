@@ -9,14 +9,18 @@ pub struct BlobId {
     pub height: BlockHeight,
     pub namespace: Namespace,
     pub commitment: Commitment,
+    pub l2_chain_id: u64,
+    pub batch_number: u32,
 }
 
 impl BlobId {
-    pub fn new(height: BlockHeight, namespace: Namespace, commitment: Commitment) -> Self {
+    pub fn new(height: BlockHeight, namespace: Namespace, commitment: Commitment, l2_chain_id: u64, batch_number: u32) -> Self {
         Self {
             height,
             namespace,
             commitment,
+            l2_chain_id,
+            batch_number,
         }
     }
 }
@@ -35,6 +39,8 @@ impl std::fmt::Debug for BlobId {
             .field("height", &self.height.value())
             .field("namespace", &namespace_string)
             .field("commitment", &commitment_string)
+            .field("l2_chain_id", &self.l2_chain_id)
+            .field("batch_number", &self.batch_number)
             .finish()
     }
 }
@@ -52,10 +58,12 @@ impl Display for BlobId {
             base64::engine::general_purpose::STANDARD.encode(&self.commitment.hash());
         write!(
             f,
-            "{}:{}:{}",
+            "{}:{}:{}:{}:{}",
             self.height.value(),
             &namespace_string,
-            &commitment_string
+            &commitment_string,
+            self.l2_chain_id,
+            self.batch_number
         )
     }
 }
@@ -65,7 +73,7 @@ impl FromStr for BlobId {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.splitn(3, ":");
+        let mut parts = s.splitn(4, ":");
 
         let height = BlockHeight::from_str(parts.next().ok_or("Height missing (u64)")?)?;
 
@@ -86,10 +94,24 @@ impl FromStr for BlobId {
             .map_err(|_| "Commitment must be 32 bytes!")?;
         let commitment = Commitment::new(c_hash.into());
 
+        let batch_number = parts
+            .next()
+            .ok_or("Batch number missing (u32)")?
+            .to_string();
+        let batch_number = u32::from_str(&batch_number)?;
+
+        let l2_chain_id = parts
+            .next()
+            .ok_or("L2 chain ID missing (u64)")?
+            .to_string();
+        let l2_chain_id = u64::from_str(&l2_chain_id)?;
+
         Ok(Self {
             height,
             namespace,
             commitment,
+            l2_chain_id,
+            batch_number,
         })
     }
 }

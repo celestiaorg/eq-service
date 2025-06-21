@@ -35,6 +35,8 @@ impl Inclusion for InclusionServiceArc {
             Commitment::new(request.commitment.try_into().map_err(|_| {
                 Status::invalid_argument("Commitment must be 32 bytes, check encoding")
             })?),
+            request.chain_id,
+            request.batch_number,
         );
 
         info!("Received grpc request for: {job:?}");

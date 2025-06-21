@@ -9,6 +9,8 @@ message GetKeccakInclusionRequest {
     uint64 height = 1;             // Data Availability (DA) block height
     bytes namespace = 2;           // 32 byte DA namespace
     bytes commitment = 3;          // 32 byte DA blob commitment
+    uint32 batch_number = 4;
+    uint64 chain_id = 5;
 }
 
 message ProofWithPublicValues {

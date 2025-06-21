@@ -87,6 +87,8 @@ async fn main() {
         row_proof: range_response.clone().proof.row_proof,
         data_root: header.dah.hash().as_bytes().try_into().unwrap(),
         keccak_hash: keccak_hash,
+        batch_number: 0,
+        chain_id: 0,
     };
 
     // create a ShareProof from the KeccakInclusionToDataRootProofInput and verify it
