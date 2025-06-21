@@ -36,6 +36,8 @@ impl EqClient {
                     .ok_or(TonicStatus::invalid_argument("Namespace invalid"))?
                     .to_vec(),
                 height: request.height.into(),
+                batch_number: request.batch_number,
+                chain_id: request.l2_chain_id,
             };
             let mut client = InclusionClient::new(self.grpc_channel.clone());
             match client.get_keccak_inclusion(request).await {

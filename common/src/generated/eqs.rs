@@ -11,6 +11,10 @@ pub struct GetKeccakInclusionRequest {
     /// 32 byte DA blob commitment
     #[prost(bytes = "vec", tag = "3")]
     pub commitment: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint32, tag = "4")]
+    pub batch_number: u32,
+    #[prost(uint64, tag = "5")]
+    pub chain_id: u64,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
