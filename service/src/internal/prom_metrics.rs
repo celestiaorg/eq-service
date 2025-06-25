@@ -2,12 +2,12 @@ use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full};
 use hyper::{body::Bytes, server::conn::http1, service::service_fn, Request, Response};
 use hyper_util::rt::TokioIo;
+use jsonrpsee::tracing::info;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::{encoding::text::encode, metrics::counter::Counter, registry::Registry};
 use std::{io, net::SocketAddr, sync::Arc};
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::sync::Notify;
 use tokio::{net::TcpListener, pin};
-// use futures::future::BoxFuture;
 
 use eq_common::ErrorLabels;
 
@@ -15,6 +15,8 @@ use eq_common::ErrorLabels;
 pub struct PromMetrics {
     /// Shared registry for encoding
     pub registry: Arc<Registry>,
+    /// Shutdown gracefully
+    shutdown: Arc<Notify>,
     /// Counter for gRPC requests
     pub grpc_req: Counter<u64>,
     /// Counter for attempted jobs
@@ -59,6 +61,7 @@ impl PromMetrics {
 
         PromMetrics {
             registry: Arc::new(registry),
+            shutdown: Arc::new(Notify::new()),
             grpc_req,
             jobs_attempted,
             jobs_finished,
@@ -71,11 +74,11 @@ impl PromMetrics {
         let listener = TcpListener::bind(addr).await?;
         let server = http1::Builder::new();
 
+        info!("Prometheus serving on {:?}", addr);
         while let Ok((stream, _)) = listener.accept().await {
             let metrics = Arc::clone(&self);
             let server_cln = server.clone();
-            let mut shutdown = signal(SignalKind::terminate())?;
-
+            let notify = self.shutdown.clone();
             tokio::spawn(async move {
                 let conn = server_cln.serve_connection(
                     TokioIo::new(stream),
@@ -103,13 +106,19 @@ impl PromMetrics {
 
                 pin!(conn);
                 tokio::select! {
-                    _ = conn.as_mut()      => {},               // connection ended
-                    _ = shutdown.recv()    => conn.as_mut().graceful_shutdown(),
-                }
+                                _ = conn.as_mut()      => {},               // connection ended
+                                    _ = notify.notified() => {
+                    conn.as_mut().graceful_shutdown();
+                },
+                            }
             });
         }
 
         Ok(())
+    }
+
+    pub fn shutdown(&self) {
+        self.shutdown.notify_waiters();
     }
 }
 

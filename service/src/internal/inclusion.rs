@@ -2,7 +2,7 @@ use crate::internal::prom_metrics::PromMetrics;
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
-use eq_common::{InclusionServiceError, KeccakInclusionToDataRootProofInput};
+use eq_common::{ErrorLabels, InclusionServiceError, KeccakInclusionToDataRootProofInput};
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
 use sha3::Keccak256;
@@ -42,7 +42,7 @@ pub struct InclusionService {
     pub config: InclusionServiceConfig,
     da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
     zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
-    metrics_handle: OnceCell<Arc<PromMetrics>>,
+    pub metrics: Arc<PromMetrics>,
     pub config_db: SledTree,
     pub queue_db: SledTree,
     pub finished_db: SledTree,
@@ -54,7 +54,7 @@ impl InclusionService {
         config: InclusionServiceConfig,
         da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
         zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
-        metrics_handle: OnceCell<Arc<PromMetrics>>,
+        metrics: Arc<PromMetrics>,
         config_db: SledTree,
         queue_db: SledTree,
         finished_db: SledTree,
@@ -64,7 +64,7 @@ impl InclusionService {
             config,
             da_client_handle,
             zk_client_handle,
-            metrics_handle,
+            metrics,
             config_db,
             queue_db,
             finished_db,
@@ -96,9 +96,14 @@ impl InclusionService {
         debug!("Job worker started");
         while let Some(Some(job)) = job_receiver.recv().await {
             let service = self.clone();
+            let metrics = self.metrics.clone();
+            metrics.jobs_attempted.inc();
             tokio::spawn(async move {
                 debug!("Job worker received {job:?}",);
-                let _ = service.prove(job).await; //Don't return with "?", we run keep looping
+                let _ = service
+                    .prove(job)
+                    .await
+                    .map_err(|e| count_error(&metrics, e)); //Don't return with "?", we run keep looping
             });
         }
 
@@ -153,6 +158,7 @@ impl InclusionService {
                             info!("🎉 {job:?} Finished!");
                             job_status = JobStatus::ZkProofFinished(zk_proof);
                             self.finalize_job(&job_key, job_status)?;
+                            self.metrics.jobs_finished.inc();
                         }
                         Err(e) => {
                             error!("{job:?} failed progressing ZkProofPending: {e}");
@@ -551,19 +557,16 @@ impl InclusionService {
             .clone()
     }
 
-    pub async fn get_metrics(&self) -> Arc<PromMetrics> {
-        self.metrics_handle
-            .get_or_init(|| async {
-                debug!("Initializing Metrics");
-                let client = PromMetrics::new();
-                Arc::new(client)
-            })
-            .await
-            .clone()
-    }
-
     pub fn shutdown(&self) {
-        info!("Terminating worker,finishing preexisting jobs");
+        info!("Terminating worker, finishing preexisting jobs");
+        let _ = self.metrics.shutdown();
         let _ = self.job_sender.send(None); // Break loop in `job_worker`
     }
+}
+
+/// Helper to count/log the error for Prometheus metrics
+fn count_error(metrics: &PromMetrics, e: InclusionServiceError) {
+    let _ = metrics
+        .jobs_errors
+        .get_or_create(&ErrorLabels { error_type: e });
 }

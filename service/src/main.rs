@@ -5,6 +5,7 @@ use eq_common::eqs::inclusion_server::InclusionServer;
 use internal::grpc::InclusionServiceArc;
 use internal::inclusion::*;
 use internal::job::*;
+use internal::prom_metrics::PromMetrics;
 use internal::util::*;
 
 use log::{debug, error, info};
@@ -54,22 +55,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         OnceCell::new(),
         OnceCell::new(),
-        OnceCell::new(),
+        Arc::new(PromMetrics::new()),
         config_db.clone(),
         queue_db.clone(),
         finished_db.clone(),
         job_sender.clone(),
     ));
 
+    debug!("Starting Prometheus service");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
-            let metrics = service.clone().get_metrics().await;
-            let _ = metrics.serve(service_prometheus_socket).await;
-            info!("Prometheus Metrics prepared, ready to export");
+            let _ = service
+                .metrics
+                .clone()
+                .serve(service_prometheus_socket)
+                .await;
         }
     });
 
+    debug!("Connecting to ZK client");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
@@ -97,6 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         async move { service.job_worker(job_receiver).await }
     });
 
+    debug!("Connecting to DA client");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {

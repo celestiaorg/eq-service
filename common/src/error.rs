@@ -59,5 +59,5 @@ impl EncodeLabelValue for InclusionServiceError {
 
 #[derive(Clone, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct ErrorLabels {
-    error_type: InclusionServiceError,
+    pub error_type: InclusionServiceError,
 }
