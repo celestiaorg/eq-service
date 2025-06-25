@@ -33,7 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service_socket: std::net::SocketAddr = std::env::var("EQ_SOCKET")
         .expect("EQ_SOCKET env var required")
         .parse()
-        .expect("EQ_SOCKET env var required");
+        .expect("EQ_SOCKET parse");
+    let service_prometheus_socket: std::net::SocketAddr = std::env::var("EQ_PROMETHEUS_SOCKET")
+        .expect("EQ_PROMETHEUS_SOCKET env var required")
+        .parse()
+        .expect("EQ_PROMETHEUS_SOCKET parse");
 
     let db = sled::open(db_path.clone())?;
     let queue_db = db.open_tree("queue")?;
@@ -50,11 +54,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         OnceCell::new(),
         OnceCell::new(),
+        OnceCell::new(),
         config_db.clone(),
         queue_db.clone(),
         finished_db.clone(),
         job_sender.clone(),
     ));
+
+    tokio::spawn({
+        let service = inclusion_service.clone();
+        async move {
+            let metrics = service.clone().get_metrics().await;
+            let _ = metrics.serve(service_prometheus_socket).await;
+            info!("Prometheus Metrics prepared, ready to export");
+        }
+    });
 
     tokio::spawn({
         let service = inclusion_service.clone();
@@ -68,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // TODO: crash whole program if this fails
     });
 
-    debug!("Starting service");
+    debug!("Listening to shutdown signals");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {

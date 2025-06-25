@@ -1,3 +1,4 @@
+use crate::internal::prom_metrics::PromMetrics;
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
@@ -41,6 +42,7 @@ pub struct InclusionService {
     pub config: InclusionServiceConfig,
     da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
     zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+    metrics_handle: OnceCell<Arc<PromMetrics>>,
     pub config_db: SledTree,
     pub queue_db: SledTree,
     pub finished_db: SledTree,
@@ -52,6 +54,7 @@ impl InclusionService {
         config: InclusionServiceConfig,
         da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
         zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+        metrics_handle: OnceCell<Arc<PromMetrics>>,
         config_db: SledTree,
         queue_db: SledTree,
         finished_db: SledTree,
@@ -61,6 +64,7 @@ impl InclusionService {
             config,
             da_client_handle,
             zk_client_handle,
+            metrics_handle,
             config_db,
             queue_db,
             finished_db,
@@ -541,6 +545,17 @@ impl InclusionService {
             .get_or_init(|| async {
                 debug!("Building ZK client");
                 let client = sp1_sdk::ProverClient::builder().network().build();
+                Arc::new(client)
+            })
+            .await
+            .clone()
+    }
+
+    pub async fn get_metrics(&self) -> Arc<PromMetrics> {
+        self.metrics_handle
+            .get_or_init(|| async {
+                debug!("Initializing Metrics");
+                let client = PromMetrics::new();
                 Arc::new(client)
             })
             .await
