@@ -56,7 +56,7 @@ impl PromMetrics {
         registry.register(
             "jobs_errors",
             "Jobs failed, labeled by variant, including retries",
-            jobs_finished.clone(),
+            jobs_errors.clone(),
         );
 
         PromMetrics {

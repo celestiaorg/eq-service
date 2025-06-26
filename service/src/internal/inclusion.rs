@@ -568,5 +568,6 @@ impl InclusionService {
 fn count_error(metrics: &PromMetrics, e: InclusionServiceError) {
     let _ = metrics
         .jobs_errors
-        .get_or_create(&ErrorLabels { error_type: e });
+        .get_or_create(&ErrorLabels { error_type: e })
+        .inc();
 }
