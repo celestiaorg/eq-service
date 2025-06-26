@@ -82,9 +82,12 @@ run-debug *FLAGS: _pre-build _pre-run
     # export CELESTIA_NODE_AUTH_TOKEN=$(celestia light auth admin --p2p.network mocha)
     RUST_LOG=eq_service=debug cargo r -- {{ FLAGS }}
 
-# Build docker image & tag `eq-service`
+# Build docker image & tag
 docker-build:
-    docker build -t eq-service .
+    #!/usr/bin/env bash
+    set -a  # Auto export vars
+    source {{ env-settings }}
+    docker build --build-arg BUILDKIT_INLINE_CACHE=1 --tag "$DOCKER_CONTAINER_NAME" --progress=plain .
 
 # Run a pre-built docker image
 docker-run:

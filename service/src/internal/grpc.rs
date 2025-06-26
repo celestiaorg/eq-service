@@ -22,6 +22,7 @@ impl Inclusion for InclusionServiceArc {
         &self,
         request: Request<GetKeccakInclusionRequest>,
     ) -> Result<Response<GetKeccakInclusionResponse>, Status> {
+        self.0.metrics.grpc_req.inc();
         let request = request.into_inner();
         let job = Job::new(
             request

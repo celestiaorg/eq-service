@@ -5,6 +5,7 @@ use eq_common::eqs::inclusion_server::InclusionServer;
 use internal::grpc::InclusionServiceArc;
 use internal::inclusion::*;
 use internal::job::*;
+use internal::prom_metrics::PromMetrics;
 use internal::util::*;
 
 use log::{debug, error, info};
@@ -33,7 +34,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service_socket: std::net::SocketAddr = std::env::var("EQ_SOCKET")
         .expect("EQ_SOCKET env var required")
         .parse()
-        .expect("EQ_SOCKET env var required");
+        .expect("EQ_SOCKET parse");
+    let service_prometheus_socket: std::net::SocketAddr = std::env::var("EQ_PROMETHEUS_SOCKET")
+        .expect("EQ_PROMETHEUS_SOCKET env var required")
+        .parse()
+        .expect("EQ_PROMETHEUS_SOCKET parse");
 
     let db = sled::open(db_path.clone())?;
     let queue_db = db.open_tree("queue")?;
@@ -50,12 +55,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         OnceCell::new(),
         OnceCell::new(),
+        Arc::new(PromMetrics::new()),
         config_db.clone(),
         queue_db.clone(),
         finished_db.clone(),
         job_sender.clone(),
     ));
 
+    debug!("Starting Prometheus service");
+    tokio::spawn({
+        let service = inclusion_service.clone();
+        async move {
+            let _ = service
+                .metrics
+                .clone()
+                .serve(service_prometheus_socket)
+                .await;
+        }
+    });
+
+    debug!("Connecting to ZK client");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
@@ -68,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // TODO: crash whole program if this fails
     });
 
-    debug!("Starting service");
+    debug!("Listening to shutdown signals");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
@@ -83,6 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         async move { service.job_worker(job_receiver).await }
     });
 
+    debug!("Connecting to DA client");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
