@@ -2,13 +2,15 @@ syntax = "proto3";
 package eqs;
 
 service Inclusion {
-    rpc GetKeccakInclusion(GetKeccakInclusionRequest) returns (GetKeccakInclusionResponse);
+    rpc GetZKStack(GetZKStackRequest) returns (GetZKStackResponse);
 }
 
-message GetKeccakInclusionRequest {
+message GetZKStackRequest {
     uint64 height = 1;             // Data Availability (DA) block height
     bytes namespace = 2;           // 32 byte DA namespace
     bytes commitment = 3;          // 32 byte DA blob commitment
+    uint32 batch_number = 4;       // ZKStack batch number
+    uint64 chain_id = 5;           // ZKStack chain id
 }
 
 message ProofWithPublicValues {
@@ -16,7 +18,7 @@ message ProofWithPublicValues {
     bytes public_values = 2;       // The public values used to generate the proof
 }
 
-message GetKeccakInclusionResponse {
+message GetZKStackResponse {
     enum Status {
         DA_PENDING = 0;            // Data Availability (DA) inclusion proof being collected
         DA_AVAILABLE = 1;          // DA inclusion proof collected
