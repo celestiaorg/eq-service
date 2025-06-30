@@ -1,7 +1,7 @@
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
-use eq_common::{InclusionServiceError, KeccakInclusionToDataRootProofInput};
+use eq_common::{InclusionServiceError, ZKStackEqProofInput};
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
 use sha3::Keccak256;
@@ -265,7 +265,7 @@ impl InclusionService {
         let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
 
         debug!("Creating ZK Proof input from Celestia Data");
-        let proof_input = KeccakInclusionToDataRootProofInput {
+        let proof_input = ZKStackEqProofInput {
             data: blob.data,
             namespace_id: job.namespace,
             share_proofs: range_response.proof.share_proofs,
@@ -415,7 +415,7 @@ impl InclusionService {
     pub async fn request_zk_proof(
         &self,
         program_id: &SuccNetProgramId,
-        proof_input: &KeccakInclusionToDataRootProofInput,
+        proof_input: &ZKStackEqProofInput,
         job: &Job,
         job_key: &[u8],
     ) -> Result<SuccNetJobId, InclusionServiceError> {

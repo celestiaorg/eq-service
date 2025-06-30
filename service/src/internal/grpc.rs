@@ -5,8 +5,8 @@ use tonic::{Request, Response, Status};
 
 use eq_common::eqs::inclusion_server::Inclusion;
 use eq_common::eqs::{
-    get_keccak_inclusion_response::{ResponseValue, Status as ResponseStatus},
-    GetKeccakInclusionRequest, GetKeccakInclusionResponse, ProofWithPublicValues,
+    get_zk_stack_response::{ResponseValue, Status as ResponseStatus},
+    GetZkStackRequest, GetZkStackResponse, ProofWithPublicValues,
 };
 
 use celestia_types::{blob::Commitment, nmt::Namespace};
@@ -18,10 +18,10 @@ pub struct InclusionServiceArc(pub Arc<InclusionService>);
 
 #[tonic::async_trait]
 impl Inclusion for InclusionServiceArc {
-    async fn get_keccak_inclusion(
+    async fn get_zk_stack(
         &self,
-        request: Request<GetKeccakInclusionRequest>,
-    ) -> Result<Response<GetKeccakInclusionResponse>, Status> {
+        request: Request<GetZkStackRequest>,
+    ) -> Result<Response<GetZkStackResponse>, Status> {
         let request = request.into_inner();
         let job = Job::new(
             request
@@ -56,7 +56,7 @@ impl Inclusion for InclusionServiceArc {
                 JobStatus::ZkProofFinished(proof) => {
                     debug!("Job finished, returning proof");
 
-                    return Ok(Response::new(GetKeccakInclusionResponse {
+                    return Ok(Response::new(GetZkStackResponse {
                         status: ResponseStatus::ZkpFinished as i32,
                         response_value: Some(ResponseValue::Proof(ProofWithPublicValues {
                             proof_data: proof.bytes(),
@@ -68,7 +68,7 @@ impl Inclusion for InclusionServiceArc {
                     match maybe_status {
                         None => {
                             warn!("Job is PERMANENT FAILURE, returning status");
-                            return Ok(Response::new(GetKeccakInclusionResponse {
+                            return Ok(Response::new(GetZkStackResponse {
                                 status: ResponseStatus::PermanentFailure as i32,
                                 response_value: Some(ResponseValue::ErrorMessage(format!(
                                     "{error:?}"
@@ -81,7 +81,7 @@ impl Inclusion for InclusionServiceArc {
                             // for a specific [Job] by sending to the queue
                             match self.0.send_job_with_new_status(job_key, *retry_status, job) {
                                 Ok(_) => {
-                                    return Ok(Response::new(GetKeccakInclusionResponse {
+                                    return Ok(Response::new(GetZkStackResponse {
                                         status: ResponseStatus::RetryableFailure as i32,
                                         response_value: Some(ResponseValue::ErrorMessage(format!(
                                             "Retrying! Previous error: {error:?}"
@@ -89,7 +89,7 @@ impl Inclusion for InclusionServiceArc {
                                     }));
                                 }
                                 Err(e) => {
-                                    return Ok(Response::new(GetKeccakInclusionResponse {
+                                    return Ok(Response::new(GetZkStackResponse {
                                         status: ResponseStatus::PermanentFailure as i32,
                                         response_value: Some(ResponseValue::ErrorMessage(format!(
                                             "Internal Failure: {e:?}"
@@ -120,7 +120,7 @@ impl Inclusion for InclusionServiceArc {
                 bincode::deserialize(&queue_data).map_err(|e| Status::internal(e.to_string()))?;
             match job_status {
                 JobStatus::DataAvailabilityPending => {
-                    return Ok(Response::new(GetKeccakInclusionResponse {
+                    return Ok(Response::new(GetZkStackResponse {
                         status: ResponseStatus::DaPending as i32,
                         response_value: Some(ResponseValue::StatusMessage(
                             "Trying to collect DA inclusion proof".to_string(),
@@ -128,7 +128,7 @@ impl Inclusion for InclusionServiceArc {
                     }));
                 }
                 JobStatus::DataAvailable(_) => {
-                    return Ok(Response::new(GetKeccakInclusionResponse {
+                    return Ok(Response::new(GetZkStackResponse {
                         status: ResponseStatus::DaAvailable as i32,
                         response_value: Some(ResponseValue::StatusMessage(
                             "Valid DA inclusion proof, requesting ZKP".to_string(),
@@ -136,7 +136,7 @@ impl Inclusion for InclusionServiceArc {
                     }));
                 }
                 JobStatus::ZkProofPending(job_id) => {
-                    return Ok(Response::new(GetKeccakInclusionResponse {
+                    return Ok(Response::new(GetZkStackResponse {
                         status: ResponseStatus::ZkpPending as i32,
                         response_value: Some(ResponseValue::ProofId(job_id.to_vec())),
                     }));
@@ -164,7 +164,7 @@ impl Inclusion for InclusionServiceArc {
             .send(Some(job.clone()))
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        Ok(Response::new(GetKeccakInclusionResponse {
+        Ok(Response::new(GetZkStackResponse {
             status: ResponseStatus::DaPending as i32,
             response_value: Some(ResponseValue::StatusMessage(
                 "New job started! Call again for status and results".to_string(),

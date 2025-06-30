@@ -9,6 +9,7 @@ pub struct BlobId {
     pub height: BlockHeight,
     pub namespace: Namespace,
     pub commitment: Commitment,
+    // ZKStack specific fields
     pub l2_chain_id: u64,
     pub batch_number: u32,
 }

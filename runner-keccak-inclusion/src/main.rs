@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-use eq_common::KeccakInclusionToDataRootProofInput;
+use eq_common::ZKStackEqProofInput;
 use sp1_sdk::{ProverClient, SP1Stdin};
 use std::fs;
 
@@ -12,7 +12,7 @@ fn main() {
 
     let input_json =
         fs::read_to_string("../blob-tool/proof_input.json").expect("Failed reading proof input");
-    let input: KeccakInclusionToDataRootProofInput =
+    let input: ZKStackEqProofInput =
         serde_json::from_str(&input_json).expect("Failed deserializing proof input");
 
     let client = ProverClient::builder().mock().build();
