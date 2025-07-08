@@ -31,7 +31,7 @@ scrape_configs:
   - job_name: "eq-service"
     scrape_interval: 5s
     static_configs:
-      - targets: ["host.docker.internal:$EQ_PROMETHEUS_PORT"]
+      - targets: ["host.docker.internal:9091"]
     metrics_path: "/metrics"
     relabel_configs:
       - target_label: instance
@@ -59,8 +59,7 @@ scrape_configs:
       module: [http_2xx] # Look for a HTTP 200 response
     static_configs:
       - targets:
-          # - http://host.docker.internal:50051 # eq-service gRPC health check if available
-          - http://host.docker.internal:$CELESTIA_NODE_PORT # Local celestia node
+          - http://host.docker.internal:26658 # Local celestia node
           - https://api.succinct.xyz # ZK prover network check
     relabel_configs:
       - source_labels: [__address__]

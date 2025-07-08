@@ -63,6 +63,15 @@ wait_for_service() {
     return 1
 }
 
+# Function to load environment variables
+load_env_vars() {
+    if [ -f "$SCRIPT_DIR/../.env" ]; then
+        set -a
+        source "$SCRIPT_DIR/../.env"
+        set +a
+    fi
+}
+
 # Function to validate configuration files
 validate_configs() {
     print_header "Validating configuration files..."
@@ -138,8 +147,23 @@ check_prerequisites() {
         print_warning "Available memory is less than 2GB. The monitoring stack may not perform well."
     fi
 
-    # Check port availability
-    local ports=(3000 9090 9093 9100 8080 9115 2021)
+    # Load environment variables from .env file
+    if [ -f "$SCRIPT_DIR/../.env" ]; then
+        set -a
+        source "$SCRIPT_DIR/../.env"
+        set +a
+    fi
+
+    # Check port availability using environment variables
+    local ports=(
+        "${GRAFANA_PORT:-3000}"
+        "${PROMETHEUS_PORT:-9090}"
+        "${ALERTMANAGER_PORT:-9093}"
+        "${NODE_EXPORTER_PORT:-9100}"
+        "${CADVISOR_PORT:-8080}"
+        "${BLACKBOX_EXPORTER_PORT:-9115}"
+        "${RECEIVER_PORT:-2021}"
+    )
     local ports_in_use=()
 
     for port in "${ports[@]}"; do
@@ -176,43 +200,51 @@ start_services() {
     print_status "Starting services..."
     docker compose up -d
 
+    # Load environment variables
+    load_env_vars
+
     # Wait for services to be ready
-    wait_for_service "Prometheus" 9090
-    wait_for_service "Grafana" 3000
-    wait_for_service "Alertmanager" 9093
+    wait_for_service "Prometheus" "${PROMETHEUS_PORT:-9090}"
+    wait_for_service "Grafana" "${GRAFANA_PORT:-3000}"
+    wait_for_service "Alertmanager" "${ALERTMANAGER_PORT:-9093}"
 
     print_status "All services started successfully!"
 }
 
 # Function to show service status
 show_status() {
+    load_env_vars
+
     print_header "Service Status"
     docker compose ps
     echo
 
     print_header "Service URLs"
-    echo "Grafana:      http://localhost:3000 (admin/admin)"
-    echo "Prometheus:   http://localhost:9090"
-    echo "Alertmanager: http://localhost:9093"
-    echo "Receiver:     http://localhost:2021"
+    echo "Grafana:      http://localhost:${GRAFANA_PORT:-3000} (${GF_SECURITY_ADMIN_USER:-admin}/${GF_SECURITY_ADMIN_PASSWORD:-admin})"
+    echo "Prometheus:   http://localhost:${PROMETHEUS_PORT:-9090}"
+    echo "Alertmanager: http://localhost:${ALERTMANAGER_PORT:-9093}"
+    echo "Receiver:     http://localhost:${RECEIVER_PORT:-2021}"
     echo
 
     print_header "Monitoring Targets"
-    echo "EQ Service:   http://host.docker.internal:9091/metrics"
-    echo "Node Exporter: http://localhost:9100/metrics"
-    echo "cAdvisor:     http://localhost:8080/metrics"
+    echo "EQ Service:   http://host.docker.internal:${EQ_PROMETHEUS_PORT:-9091}/metrics"
+    echo "Node Exporter: http://localhost:${NODE_EXPORTER_PORT:-9100}/metrics"
+    echo "cAdvisor:     http://localhost:${CADVISOR_PORT:-8080}/metrics"
     echo
 }
 
 # Function to check EQ Service connectivity
 check_eq_service() {
+    load_env_vars
+
     print_header "Checking EQ Service connectivity..."
 
     # Try to reach EQ Service metrics endpoint
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:9091/metrics | grep -q "200"; then
+    local eq_port="${EQ_PROMETHEUS_PORT:-9091}"
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:$eq_port/metrics | grep -q "200"; then
         print_status "EQ Service metrics endpoint is accessible"
     else
-        print_warning "EQ Service metrics endpoint is not accessible at http://localhost:9091/metrics"
+        print_warning "EQ Service metrics endpoint is not accessible at http://localhost:$eq_port/metrics"
         print_warning "Make sure your EQ Service is running and exposing metrics"
     fi
 }
@@ -261,6 +293,7 @@ restart_services() {
 
 # Function to show logs
 show_logs() {
+    load_env_vars
     cd "$SCRIPT_DIR"
     if [ "$1" == "follow" ]; then
         docker compose logs -f
@@ -315,11 +348,14 @@ main() {
             show_status
             check_eq_service
 
+            # Load environment variables for final output
+            load_env_vars
+
             echo
             print_status "Monitoring stack is now running!"
-            print_status "Access Grafana at: http://localhost:3000 (admin/admin)"
-            print_status "Access Prometheus at: http://localhost:9090"
-            print_status "Access Alertmanager at: http://localhost:9093"
+            print_status "Access Grafana at: http://localhost:${GRAFANA_PORT:-3000} (${GF_SECURITY_ADMIN_USER:-admin}/${GF_SECURITY_ADMIN_PASSWORD:-admin})"
+            print_status "Access Prometheus at: http://localhost:${PROMETHEUS_PORT:-9090}"
+            print_status "Access Alertmanager at: http://localhost:${ALERTMANAGER_PORT:-9093}"
             echo
             print_status "To stop the monitoring stack, run: $0 --stop"
             print_status "To view logs, run: $0 --logs"

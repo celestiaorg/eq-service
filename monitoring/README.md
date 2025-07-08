@@ -12,7 +12,7 @@ With default ports:
 │   (Port 9115)   │    │   (Port 9100)   │
 └─────────────────┘    └─────────────────┘
          │                      │
-         └────────────────▼     ▼                  
+         └────────────────▼     ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   EQ Service    │───▶│   Prometheus    │───▶│    Grafana      │
 │   (Port 9091)   │    │   (Port 9090)   │    │   (Port 3000)   │
@@ -68,40 +68,48 @@ With default ports:
 2. EQ Service running and exposing metrics on port 9091
 3. At least 4GB RAM available for the monitoring stack
 
-
 ### Configuration
 
 #### EQ Service
 
 Ensure your EQ Service is exposing metrics on port set in `../.env` = `EQ_PROMETHEUS_SOCKET=127.0.0.1:9091` and `EQ_PROMETHEUS_PORT=9091` by default.
-The monitoring stack expects the service to be accessible at `host.docker.internal:EQ_PROMETHEUS_PORT` from within the containers.
+The monitoring stack expects the service to be accessible at `host.docker.internal:${EQ_PROMETHEUS_PORT}` from within the containers.
 
-#### Environment Variables
+You can customize the monitoring setup using environment variables in `../.env`, see [../example.env](../example.env) for details.
 
-You can customize the setup using environment variables in `../.env`:
+#### Configuration Testing
+
+To test and validate your monitoring configuration, use [./test-config.sh](./test-config.sh):
 
 ```sh
-#### Monitoring Settings
+# Get help
+./test-config.sh --help
 
-##### Grafana Configuration
-GF_SECURITY_ADMIN_USER=admin
-GF_SECURITY_ADMIN_PASSWORD=admin
-GF_USERS_ALLOW_SIGN_UP=false
-GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+# Test all configurations
+./test-config.sh
 
-##### Alert Receiver Configuration
-RECEIVER_DEBUG=false
-RECEIVER_PORT=2021
-
-##### Prometheus Configuration
-PROMETHEUS_RETENTION=200h  
+# Show configuration summary
+./test-config.sh --summary
 ```
+
+The test script validates:
+
+- All required configuration files are present
+- Environment variable substitution works correctly (if template exists)
+- Docker Compose configuration is valid
+- Port configurations are within valid ranges
+- Grafana environment variables are properly set
+- Prometheus retention format is correct
+- Receiver configuration is valid
+- Startup sequence dependencies are correct
+
+The system supports both static configuration (using `prometheus.yml`) and dynamic configuration (using `prometheus.yml.template` with environment variables). The test script will automatically detect which approach is being used.
 
 #### Management Tooling
 
 To start and interact with all monitoring services, use [./monitoring-tools.sh](./monitoring-tools.sh):
- 
-```bash
+
+```sh
 # More info on script
 ./monitoring-tools.sh --help
 
@@ -132,11 +140,53 @@ To start and interact with all monitoring services, use [./monitoring-tools.sh](
 
 ### Access the Services
 
-- **Grafana**: <http://localhost:3000>
-  - Set creds in `../.env` = `GF_SECURITY_ADMIN_USER=admin` and `GF_SECURITY_ADMIN_PASSWORD=admin` by default
-- **Prometheus**: <http://localhost:9090>
-- **Alertmanager**: <http://localhost:9093>
-- **Alert Receiver**: <http://localhost:2021>
+- **Grafana**: <http://localhost:${GRAFANA_PORT:-3000}>
+  - Set credentials in `../.env` = `GF_SECURITY_ADMIN_USER=admin` and `GF_SECURITY_ADMIN_PASSWORD=admin` by default
+- **Prometheus**: <http://localhost:${PROMETHEUS_PORT:-9090}>
+- **Alertmanager**: <http://localhost:${ALERTMANAGER_PORT:-9093}>
+- **Alert Receiver**: <http://localhost:${RECEIVER_PORT:-2021}>
+
+**Note**: The actual ports will be determined by the environment variables set in `../.env`. The values shown above are defaults if no environment variables are set.
+
+## Configuration Approaches
+
+The monitoring stack supports two configuration approaches:
+
+### Static Configuration (Default)
+
+By default, the system uses a static `prometheus.yml` configuration file with fixed ports:
+
+- **EQ Service**: `host.docker.internal:9091`
+- **Celestia Node**: `host.docker.internal:26658`
+- **Internal Services**: Use Docker service names (e.g., `node-exporter:9100`)
+
+This approach works out-of-the-box and is suitable for most use cases.
+
+### Dynamic Configuration (Advanced)
+
+For advanced users who need custom external service ports, you can create a `prometheus.yml.template` file:
+
+1. **Create the template**:
+
+   ```bash
+   cp prometheus/prometheus.yml prometheus/prometheus.yml.template
+   ```
+
+2. **Edit the template** to use environment variables:
+
+   ```yaml
+   - job_name: "eq-service"
+     static_configs:
+       - targets: ["host.docker.internal:${EQ_PROMETHEUS_PORT}"]
+   ```
+
+3. **Set environment variables** in `../.env`:
+   ```sh
+   EQ_PROMETHEUS_PORT=9091
+   CELESTIA_NODE_PORT=26658
+   ```
+
+The system automatically detects which approach you're using and processes the configuration accordingly.
 
 ## Dashboards
 
@@ -220,7 +270,7 @@ receivers:
 
 ## Debug Commands
 
-```bash
+````sh
 # Check all container logs
 docker compose logs
 
@@ -229,17 +279,18 @@ docker compose logs prometheus
 docker compose logs grafana
 docker compose logs alertmanager
 
+```sh
 # Check container resource usage
 docker stats
 
-# Test Prometheus targets
-curl http://localhost:9090/api/v1/targets
+# Test Prometheus targets (using environment variable or default port)
+curl http://localhost:${PROMETHEUS_PORT:-9090}/api/v1/targets
 
-# Test alert receiver
-curl -X POST http://localhost:2021/webhook \
+# Test alert receiver (using environment variable or default port)
+curl -X POST http://localhost:${RECEIVER_PORT:-2021}/webhook \
   -H "Content-Type: application/json" \
   -d '{"alerts": [{"status": "firing", "labels": {"alertname": "test"}}]}'
-```
+````
 
 ## Maintenance
 
@@ -255,7 +306,7 @@ By default, metrics are retained for 200 hours. To change this:
 
 To backup your monitoring data:
 
-```bash
+```sh
 # Backup Prometheus data
 docker run --rm -v prometheus_data:/data -v $(pwd):/backup \
   busybox tar czf /backup/prometheus-backup.tar.gz /data
@@ -269,7 +320,7 @@ docker run --rm -v grafana_data:/data -v $(pwd):/backup \
 
 To update the monitoring stack:
 
-```bash
+```sh
 # Pull latest images
 docker compose pull
 
@@ -299,6 +350,73 @@ docker compose up -d
 - Use Alertmanager clustering
 - Implement load balancing for Grafana
 - Regular backup procedures
+
+## Complete Example
+
+Here's a complete example of setting up the monitoring stack with custom ports:
+
+### 1. Configure Environment Variables
+
+Edit your `../.env` file:
+
+```sh
+# Monitoring Service Ports
+PROMETHEUS_PORT=9090
+ALERTMANAGER_PORT=9093
+GRAFANA_PORT=3000
+NODE_EXPORTER_PORT=9100
+CADVISOR_PORT=8080
+BLACKBOX_EXPORTER_PORT=9115
+
+# External Service Ports (optional - only needed if different from defaults)
+EQ_PROMETHEUS_PORT=9091
+CELESTIA_NODE_PORT=26658
+
+# Grafana Configuration
+GF_SECURITY_ADMIN_USER=admin
+GF_SECURITY_ADMIN_PASSWORD=secure_password_here
+GF_USERS_ALLOW_SIGN_UP=false
+GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+
+# Alert Receiver Configuration
+RECEIVER_DEBUG=false
+RECEIVER_PORT=2021
+
+# Prometheus Configuration
+PROMETHEUS_RETENTION=200h
+```
+
+**Note**: The system uses static configuration by default. External service ports (EQ_PROMETHEUS_PORT, CELESTIA_NODE_PORT) only need to be set if you're using non-default ports and have created a `prometheus.yml.template` file.
+
+### 2. Test Configuration
+
+```sh
+# Test all configurations
+./test-config.sh --all
+
+# Show configuration summary
+./test-config.sh --summary
+```
+
+### 3. Start the Monitoring Stack
+
+```sh
+# Start all services
+./monitoring-tools.sh
+
+# Check service status
+./monitoring-tools.sh --status
+
+# Check EQ Service connectivity
+./monitoring-tools.sh --check-eq
+```
+
+### 4. Access Services
+
+- **Grafana**: http://localhost:3000 (admin/secure_password_here)
+- **Prometheus**: http://localhost:9090
+- **Alertmanager**: http://localhost:9093
+- **Alert Receiver**: http://localhost:2021
 
 ## References
 
