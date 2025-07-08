@@ -13,7 +13,7 @@ groups:
 
       # gRPC request rate alerts
       - alert: EqServiceLowRequestRate
-        expr: rate(eqs_grpc_req[5m]) < 0.01
+        expr: rate(eqs_grpc_req_total[5m]) < 0.01
         for: 2m
         labels:
           severity: warning
@@ -22,7 +22,7 @@ groups:
           description: "EQ Service gRPC request rate is {{ $value }} requests/second, which is unusually low"
 
       - alert: EqServiceHighRequestRate
-        expr: rate(eqs_grpc_req[5m]) > 100
+        expr: rate(eqs_grpc_req_total[5m]) > 100
         for: 1m
         labels:
           severity: warning
@@ -32,7 +32,7 @@ groups:
 
       # Job processing alerts
       - alert: EqServiceJobsStuck
-        expr: increase(eqs_jobs_attempted[5m]) > 0 and increase(eqs_jobs_finished[5m]) == 0 and increase(eqs_jobs_errors[5m]) == 0
+        expr: increase(eqs_jobs_attempted_total[5m]) > 0 and increase(eqs_jobs_finished_total[5m]) == 0 and increase(eqs_jobs_errors_total[5m]) == 0
         for: 2m
         labels:
           severity: warning
@@ -41,7 +41,7 @@ groups:
           description: "Jobs are being attempted but none are finishing or failing"
 
       - alert: EqServiceHighJobFailureRate
-        expr: rate(eqs_jobs_errors[5m]) / rate(eqs_jobs_attempted[5m]) > 0.5
+        expr: rate(eqs_jobs_errors_total[5m]) / rate(eqs_jobs_attempted_total[5m]) > 0.5
         for: 1m
         labels:
           severity: critical
@@ -50,7 +50,7 @@ groups:
           description: "{{ $value | humanizePercentage }} of jobs are failing in the last 5 minutes"
 
       - alert: EqServiceJobBacklog
-        expr: eqs_jobs_attempted - eqs_jobs_finished - eqs_jobs_errors > 100
+        expr: eqs_jobs_attempted_total - eqs_jobs_finished_total - eqs_jobs_errors_total > 100
         for: 5m
         labels:
           severity: warning

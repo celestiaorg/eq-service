@@ -40,7 +40,18 @@ fi
 EQ_PROMETHEUS_PORT=${EQ_PROMETHEUS_PORT:-9091}
 CELESTIA_NODE_PORT=${CELESTIA_NODE_PORT:-26658}
 
+# Determine the Docker gateway IP dynamically
+DOCKER_GATEWAY_IP=$(docker network inspect monitoring_monitoring 2>/dev/null | jq -r '.[0].IPAM.Config[0].Gateway' 2>/dev/null)
+if [ -z "$DOCKER_GATEWAY_IP" ] || [ "$DOCKER_GATEWAY_IP" = "null" ]; then
+    # Fallback to common Docker gateway IP
+    DOCKER_GATEWAY_IP="172.17.0.1"
+    print_warn "Could not determine Docker gateway IP, using fallback: $DOCKER_GATEWAY_IP"
+else
+    print_info "Detected Docker gateway IP: $DOCKER_GATEWAY_IP"
+fi
+
 print_info "Using ports: EQ_PROMETHEUS_PORT=${EQ_PROMETHEUS_PORT}, CELESTIA_NODE_PORT=${CELESTIA_NODE_PORT}"
+print_info "Using Docker gateway IP: ${DOCKER_GATEWAY_IP}"
 
 # Configuration files
 TEMPLATE_FILE="$SCRIPT_DIR/prometheus/prometheus.yml.template"
@@ -52,23 +63,23 @@ if [ -f "$TEMPLATE_FILE" ]; then
     print_info "Processing prometheus.yml.template..."
 
     # Simple sed-based substitution
-    sed "s/\${EQ_PROMETHEUS_PORT}/${EQ_PROMETHEUS_PORT}/g; s/\${CELESTIA_NODE_PORT}/${CELESTIA_NODE_PORT}/g" \
+    sed "s/\${EQ_PROMETHEUS_PORT}/${EQ_PROMETHEUS_PORT}/g; s/\${CELESTIA_NODE_PORT}/${CELESTIA_NODE_PORT}/g; s/\${DOCKER_GATEWAY_IP}/${DOCKER_GATEWAY_IP}/g" \
         "$TEMPLATE_FILE" > "$OUTPUT_FILE"
 
     print_info "✓ Template processed successfully"
 
     # Verify the substitution worked
-    if grep -q "host.docker.internal:${EQ_PROMETHEUS_PORT}" "$OUTPUT_FILE"; then
-        print_info "✓ EQ Service port configured to ${EQ_PROMETHEUS_PORT}"
+    if grep -q "${DOCKER_GATEWAY_IP}:${EQ_PROMETHEUS_PORT}" "$OUTPUT_FILE"; then
+        print_info "✓ EQ Service configured to ${DOCKER_GATEWAY_IP}:${EQ_PROMETHEUS_PORT}"
     else
-        print_error "✗ Failed to configure EQ Service port"
+        print_error "✗ Failed to configure EQ Service endpoint"
         exit 1
     fi
 
-    if grep -q "host.docker.internal:${CELESTIA_NODE_PORT}" "$OUTPUT_FILE"; then
-        print_info "✓ Celestia Node port configured to ${CELESTIA_NODE_PORT}"
+    if grep -q "${DOCKER_GATEWAY_IP}:${CELESTIA_NODE_PORT}" "$OUTPUT_FILE"; then
+        print_info "✓ Celestia Node configured to ${DOCKER_GATEWAY_IP}:${CELESTIA_NODE_PORT}"
     else
-        print_error "✗ Failed to configure Celestia Node port"
+        print_error "✗ Failed to configure Celestia Node endpoint"
         exit 1
     fi
 
