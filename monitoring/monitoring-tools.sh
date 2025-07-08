@@ -367,14 +367,7 @@ main() {
             show_status
             check_eq_service
 
-            # Fix Grafana dashboard datasource references
-            print_status "Fixing Grafana dashboard datasource references..."
-            if ./fix-dashboard.sh --no-wait >/dev/null 2>&1; then
-                print_status "✓ Dashboard fixed successfully"
-            else
-                print_warning "⚠ Dashboard fix failed, dashboard may not display data correctly"
-                print_warning "  Run './fix-dashboard.sh' manually to fix the dashboard"
-            fi
+
 
             # Load environment variables for final output
             load_env_vars
@@ -387,7 +380,6 @@ main() {
             echo
             print_status "To stop the monitoring stack, run: $0 --stop"
             print_status "To view logs, run: $0 --logs"
-            print_status "If dashboard shows 'No data', run: ./fix-dashboard.sh"
             ;;
         *)
             print_error "Unknown option: $1"
