@@ -2,8 +2,7 @@ services:
   prometheus:
     container_name: prometheus
     image: prom/prometheus:latest
-    ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+    network_mode: host
     volumes:
       - "./prometheus:/etc/prometheus"
       - "prometheus_data:/prometheus"
@@ -15,17 +14,15 @@ services:
       - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-200h}"
       - "--web.enable-lifecycle"
       - "--web.external-url=http://localhost:${PROMETHEUS_PORT:-9090}"
+      - "--web.listen-address=0.0.0.0:${PROMETHEUS_PORT:-9090}"
     restart: unless-stopped
-    networks:
-      - monitoring
     env_file:
       - ../.env
 
   alertmanager:
     container_name: alertmanager
     image: prom/alertmanager:latest
-    ports:
-      - "${ALERTMANAGER_PORT:-9093}:9093"
+    network_mode: host
     volumes:
       - "./alertmanager:/etc/alertmanager"
       - "alertmanager_data:/alertmanager"
@@ -33,17 +30,15 @@ services:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
       - "--storage.path=/alertmanager"
       - "--web.external-url=http://localhost:${ALERTMANAGER_PORT:-9093}"
+      - "--web.listen-address=0.0.0.0:${ALERTMANAGER_PORT:-9093}"
     restart: unless-stopped
-    networks:
-      - monitoring
     env_file:
       - ../.env
 
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
-    ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+    network_mode: host
     volumes:
       - "./grafana:/etc/grafana/provisioning"
       - "grafana_data:/var/lib/grafana"
@@ -52,17 +47,15 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=${GF_USERS_ALLOW_SIGN_UP:-false}
       - GF_INSTALL_PLUGINS=${GF_INSTALL_PLUGINS:-grafana-clock-panel,grafana-simple-json-datasource}
+      - GF_SERVER_HTTP_PORT=${GRAFANA_PORT:-3000}
     restart: unless-stopped
-    networks:
-      - monitoring
     env_file:
       - ../.env
 
   node-exporter:
     container_name: node-exporter
     image: prom/node-exporter:latest
-    ports:
-      - "${NODE_EXPORTER_PORT:-9100}:9100"
+    network_mode: host
     volumes:
       - "/proc:/host/proc:ro"
       - "/sys:/host/sys:ro"
@@ -72,18 +65,15 @@ services:
       - "--path.rootfs=/rootfs"
       - "--path.sysfs=/host/sys"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
-      - "--web.listen-address=0.0.0.0:9100"
+      - "--web.listen-address=0.0.0.0:${NODE_EXPORTER_PORT:-9100}"
     restart: unless-stopped
-    networks:
-      - monitoring
     env_file:
       - ../.env
 
   cadvisor:
     container_name: cadvisor
     image: gcr.io/cadvisor/cadvisor:latest
-    ports:
-      - "${CADVISOR_PORT:-8080}:8080"
+    network_mode: host
     volumes:
       - "/:/rootfs:ro"
       - "/var/run:/var/run:ro"
@@ -91,41 +81,33 @@ services:
       - "/var/lib/docker/:/var/lib/docker:ro"
       - "/dev/disk/:/dev/disk:ro"
     command:
-      - "--port=8080"
+      - "--port=${CADVISOR_PORT:-8080}"
     privileged: true
     restart: unless-stopped
-    networks:
-      - monitoring
     env_file:
       - ../.env
 
   blackbox-exporter:
     container_name: blackbox-exporter
     image: prom/blackbox-exporter:latest
-    ports:
-      - "${BLACKBOX_EXPORTER_PORT:-9115}:9115"
+    network_mode: host
     volumes:
       - "./blackbox:/etc/blackbox_exporter"
     command:
       - "--config.file=/etc/blackbox_exporter/blackbox.yml"
-      - "--web.listen-address=0.0.0.0:9115"
+      - "--web.listen-address=0.0.0.0:${BLACKBOX_EXPORTER_PORT:-9115}"
     restart: unless-stopped
-    networks:
-      - monitoring
     env_file:
       - ../.env
 
   receiver:
     container_name: receiver
     build: ./receiver
-    ports:
-      - "${RECEIVER_PORT:-2021}:2021"
+    network_mode: host
     environment:
-      - PORT=2021
+      - PORT=${RECEIVER_PORT:-2021}
       - DEBUG=${RECEIVER_DEBUG:-false}
     restart: unless-stopped
-    networks:
-      - monitoring
     env_file:
       - ../.env
 
@@ -133,7 +115,3 @@ volumes:
   prometheus_data:
   grafana_data:
   alertmanager_data:
-
-networks:
-  monitoring:
-    driver: bridge

@@ -31,7 +31,7 @@ scrape_configs:
   - job_name: "eq-service"
     scrape_interval: 5s
     static_configs:
-      - targets: ["172.17.0.1:9091"]
+      - targets: ["localhost:9091"]
     metrics_path: "/metrics"
     relabel_configs:
       - target_label: instance
@@ -40,17 +40,17 @@ scrape_configs:
   # Node Exporter - system metrics
   - job_name: "node-exporter"
     static_configs:
-      - targets: ["node-exporter:9100"]
+      - targets: ["localhost:9100"]
 
   # cAdvisor - container metrics
   - job_name: "cadvisor"
     static_configs:
-      - targets: ["cadvisor:8080"]
+      - targets: ["localhost:8080"]
 
   # Alertmanager
   - job_name: "alertmanager"
     static_configs:
-      - targets: ["alertmanager:9093"]
+      - targets: ["localhost:9093"]
 
   # Blackbox exporter for probing external endpoints
   - job_name: "blackbox"
@@ -59,7 +59,7 @@ scrape_configs:
       module: [http_2xx] # Look for a HTTP 200 response
     static_configs:
       - targets:
-          - http://172.17.0.1:26658 # Local celestia node
+          - http://localhost:26658 # Local celestia node
           - https://api.succinct.xyz # ZK prover network check
     relabel_configs:
       - source_labels: [__address__]
@@ -67,9 +67,9 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: blackbox-exporter:9115 # The blackbox exporter's real hostname:port
+        replacement: localhost:9115 # The blackbox exporter's real hostname:port
 
   # Grafana self-monitoring
   - job_name: "grafana"
     static_configs:
-      - targets: ["grafana:3000"]
+      - targets: ["localhost:3000"]
