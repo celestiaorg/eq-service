@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   prometheus:
     container_name: prometheus
@@ -9,27 +7,14 @@ services:
     volumes:
       - "./prometheus:/etc/prometheus"
       - "prometheus_data:/prometheus"
-    environment:
-      - EQ_PROMETHEUS_PORT=${EQ_PROMETHEUS_PORT:-9091}
-      - CELESTIA_NODE_PORT=${CELESTIA_NODE_PORT:-26658}
-    entrypoint: |
-      sh -c "
-        # Process prometheus.yml template if it exists, otherwise use static config
-        if [ -f /etc/prometheus/prometheus.yml.template ]; then
-          envsubst < /etc/prometheus/prometheus.yml.template > /tmp/prometheus.yml
-        else
-          cp /etc/prometheus/prometheus.yml /tmp/prometheus.yml
-        fi &&
-        # Start Prometheus
-        exec /bin/prometheus \
-          --config.file=/tmp/prometheus.yml \
-          --storage.tsdb.path=/prometheus \
-          --web.console.libraries=/etc/prometheus/console_libraries \
-          --web.console.templates=/etc/prometheus/consoles \
-          --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-200h} \
-          --web.enable-lifecycle \
-          --web.external-url=http://localhost:${PROMETHEUS_PORT:-9090}
-      "
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-200h}"
+      - "--web.enable-lifecycle"
+      - "--web.external-url=http://localhost:${PROMETHEUS_PORT:-9090}"
     restart: unless-stopped
     networks:
       - monitoring
@@ -87,6 +72,7 @@ services:
       - "--path.rootfs=/rootfs"
       - "--path.sysfs=/host/sys"
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+      - "--web.listen-address=0.0.0.0:9100"
     restart: unless-stopped
     networks:
       - monitoring
@@ -104,6 +90,8 @@ services:
       - "/sys:/sys:ro"
       - "/var/lib/docker/:/var/lib/docker:ro"
       - "/dev/disk/:/dev/disk:ro"
+    command:
+      - "--port=8080"
     privileged: true
     restart: unless-stopped
     networks:
@@ -118,6 +106,9 @@ services:
       - "${BLACKBOX_EXPORTER_PORT:-9115}:9115"
     volumes:
       - "./blackbox:/etc/blackbox_exporter"
+    command:
+      - "--config.file=/etc/blackbox_exporter/blackbox.yml"
+      - "--web.listen-address=0.0.0.0:9115"
     restart: unless-stopped
     networks:
       - monitoring
@@ -130,7 +121,7 @@ services:
     ports:
       - "${RECEIVER_PORT:-2021}:2021"
     environment:
-      - PORT=${RECEIVER_PORT:-2021}
+      - PORT=2021
       - DEBUG=${RECEIVER_DEBUG:-false}
     restart: unless-stopped
     networks:

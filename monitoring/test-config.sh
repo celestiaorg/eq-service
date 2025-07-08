@@ -58,11 +58,6 @@ test_config_files() {
         "receiver/requirements.txt"
     )
 
-    # Optional files
-    local optional_files=(
-        "prometheus/prometheus.yml.template"
-    )
-
     local missing_files=()
 
     for file in "${files_to_check[@]}"; do
@@ -71,15 +66,6 @@ test_config_files() {
         else
             print_error "✗ $file missing"
             missing_files+=("$file")
-        fi
-    done
-
-    # Check optional files
-    for file in "${optional_files[@]}"; do
-        if [ -f "$SCRIPT_DIR/$file" ]; then
-            print_status "✓ $file exists (optional)"
-        else
-            print_warning "⚠ $file missing (optional)"
         fi
     done
 
@@ -92,54 +78,40 @@ test_config_files() {
     return 0
 }
 
-# Function to test environment variable substitution
-test_env_substitution() {
-    print_header "Testing environment variable substitution..."
+# Function to test static configuration
+test_static_configuration() {
+    print_header "Testing static configuration..."
 
-    # Check if template exists
-    if [ ! -f "$SCRIPT_DIR/prometheus/prometheus.yml.template" ]; then
-        print_warning "No prometheus.yml.template found, using static configuration"
-        print_status "✓ Static configuration approach enabled"
-        return 0
-    fi
-
-    # Create a temporary directory for testing
-    local temp_dir=$(mktemp -d)
-
-    # Copy the template
-    cp "$SCRIPT_DIR/prometheus/prometheus.yml.template" "$temp_dir/prometheus.yml.template"
-
-    # Test with default values
-    export EQ_PROMETHEUS_PORT=9091
-    export CELESTIA_NODE_PORT=26658
-
-    # Process the template
-    if command -v envsubst >/dev/null 2>&1; then
-        envsubst < "$temp_dir/prometheus.yml.template" > "$temp_dir/prometheus.yml"
-        print_status "✓ Template processing successful"
-
-        # Check if substitution worked
-        if grep -q "host.docker.internal:9091" "$temp_dir/prometheus.yml"; then
-            print_status "✓ EQ_PROMETHEUS_PORT substitution works"
-        else
-            print_error "✗ EQ_PROMETHEUS_PORT substitution failed"
-        fi
-
-        if grep -q "host.docker.internal:26658" "$temp_dir/prometheus.yml"; then
-            print_status "✓ CELESTIA_NODE_PORT substitution works"
-        else
-            print_error "✗ CELESTIA_NODE_PORT substitution failed"
-        fi
-
-    else
-        print_error "envsubst not available for testing"
+    # Check if prometheus.yml exists
+    if [ ! -f "$SCRIPT_DIR/prometheus/prometheus.yml" ]; then
+        print_error "✗ prometheus.yml not found"
         return 1
     fi
 
-    # Clean up
-    rm -rf "$temp_dir"
+    # Check that configuration has expected static values
+    if grep -q "host.docker.internal:9091" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
+        print_status "✓ EQ Service configured with default port 9091"
+    else
+        print_error "✗ EQ Service not configured correctly"
+        return 1
+    fi
 
-    print_status "Environment variable substitution test completed"
+    if grep -q "host.docker.internal:26658" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
+        print_status "✓ Celestia Node configured with default port 26658"
+    else
+        print_error "✗ Celestia Node not configured correctly"
+        return 1
+    fi
+
+    # Check internal service configurations
+    if grep -q "node-exporter:9100" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
+        print_status "✓ Internal services use Docker service names"
+    else
+        print_error "✗ Internal service configuration incorrect"
+        return 1
+    fi
+
+    print_status "Static configuration test completed"
     return 0
 }
 
@@ -177,7 +149,6 @@ test_port_configs() {
         "CADVISOR_PORT:${CADVISOR_PORT:-8080}"
         "BLACKBOX_EXPORTER_PORT:${BLACKBOX_EXPORTER_PORT:-9115}"
         "RECEIVER_PORT:${RECEIVER_PORT:-2021}"
-        "EQ_PROMETHEUS_PORT:${EQ_PROMETHEUS_PORT:-9091}"
     )
 
     for port_config in "${ports[@]}"; do
@@ -260,23 +231,21 @@ test_startup_sequence() {
     load_env_vars
 
     # Test order of operations
-    print_status "1. Config processor would substitute environment variables"
-    print_status "2. Prometheus would start with processed config"
-    print_status "3. Other services would start in dependency order"
+    print_status "1. Docker Compose processes environment variables"
+    print_status "2. Services start with static configuration"
+    print_status "3. Port mappings handled by Docker Compose"
 
-    # Check prometheus configuration approach
-    if [ -f "$SCRIPT_DIR/prometheus/prometheus.yml.template" ]; then
-        print_status "✓ Prometheus template ready for processing"
-    elif [ -f "$SCRIPT_DIR/prometheus/prometheus.yml" ]; then
+    # Check prometheus configuration
+    if [ -f "$SCRIPT_DIR/prometheus/prometheus.yml" ]; then
         print_status "✓ Static prometheus configuration ready"
     else
         print_error "✗ No prometheus configuration found"
         return 1
     fi
 
-    # Check that all required env vars have defaults
-    local required_vars=(EQ_PROMETHEUS_PORT CELESTIA_NODE_PORT)
-    for var in "${required_vars[@]}"; do
+    # Check that monitoring port vars have defaults
+    local monitoring_ports=(PROMETHEUS_PORT GRAFANA_PORT ALERTMANAGER_PORT)
+    for var in "${monitoring_ports[@]}"; do
         if [ -n "${!var}" ]; then
             print_status "✓ $var=${!var}"
         else
@@ -325,7 +294,7 @@ run_all_tests() {
 
     # Run each test
     test_config_files && test_results+=("✓ Config files") || test_results+=("✗ Config files")
-    test_env_substitution && test_results+=("✓ Env substitution") || test_results+=("✗ Env substitution")
+    test_static_configuration && test_results+=("✓ Static config") || test_results+=("✗ Static config")
     test_docker_compose && test_results+=("✓ Docker Compose") || test_results+=("✗ Docker Compose")
     test_port_configs && test_results+=("✓ Port configs") || test_results+=("✗ Port configs")
     test_grafana_config && test_results+=("✓ Grafana config") || test_results+=("✗ Grafana config")
@@ -368,7 +337,7 @@ OPTIONS:
     -h, --help              Show this help message
     -a, --all               Run all tests (default)
     -f, --files             Test configuration files only
-    -e, --env               Test environment variable substitution
+    -e, --env               Test static configuration
     -d, --docker            Test Docker Compose configuration
     -p, --ports             Test port configurations
     -g, --grafana           Test Grafana configuration
@@ -399,7 +368,7 @@ main() {
             exit $?
             ;;
         -e|--env)
-            test_env_substitution
+            test_static_configuration
             exit $?
             ;;
         -d|--docker)

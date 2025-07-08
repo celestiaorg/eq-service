@@ -95,15 +95,14 @@ To test and validate your monitoring configuration, use [./test-config.sh](./tes
 The test script validates:
 
 - All required configuration files are present
-- Environment variable substitution works correctly (if template exists)
 - Docker Compose configuration is valid
 - Port configurations are within valid ranges
 - Grafana environment variables are properly set
 - Prometheus retention format is correct
 - Receiver configuration is valid
-- Startup sequence dependencies are correct
+- Service dependencies are correct
 
-The system supports both static configuration (using `prometheus.yml`) and dynamic configuration (using `prometheus.yml.template` with environment variables). The test script will automatically detect which approach is being used.
+The system uses static configuration with Docker Compose environment variable substitution for port mappings.
 
 #### Management Tooling
 
@@ -148,45 +147,32 @@ To start and interact with all monitoring services, use [./monitoring-tools.sh](
 
 **Note**: The actual ports will be determined by the environment variables set in `../.env`. The values shown above are defaults if no environment variables are set.
 
-## Configuration Approaches
+## Configuration Approach
 
-The monitoring stack supports two configuration approaches:
+The monitoring stack uses a **clean static configuration approach** with Docker Compose environment variable substitution:
 
-### Static Configuration (Default)
+### How It Works
 
-By default, the system uses a static `prometheus.yml` configuration file with fixed ports:
+1. **Internal Services**: Use Docker service names with fixed internal ports
+   - `prometheus:9090`, `grafana:3000`, `node-exporter:9100`, etc.
+   - These ports are not exposed externally unless mapped
 
-- **EQ Service**: `host.docker.internal:9091`
-- **Celestia Node**: `host.docker.internal:26658`
-- **Internal Services**: Use Docker service names (e.g., `node-exporter:9100`)
+2. **External Port Mapping**: Configurable via environment variables
+   - `PROMETHEUS_PORT=9090` maps to `prometheus:9090`
+   - `GRAFANA_PORT=3000` maps to `grafana:3000`
+   - Docker Compose handles the port mapping: `${PROMETHEUS_PORT:-9090}:9090`
 
-This approach works out-of-the-box and is suitable for most use cases.
+3. **External Services**: Use static default ports in configuration
+   - **EQ Service**: `host.docker.internal:9091`
+   - **Celestia Node**: `host.docker.internal:26658`
+   - If you change these ports, update your EQ Service and Celestia Node configuration
 
-### Dynamic Configuration (Advanced)
+### Benefits
 
-For advanced users who need custom external service ports, you can create a `prometheus.yml.template` file:
-
-1. **Create the template**:
-
-   ```bash
-   cp prometheus/prometheus.yml prometheus/prometheus.yml.template
-   ```
-
-2. **Edit the template** to use environment variables:
-
-   ```yaml
-   - job_name: "eq-service"
-     static_configs:
-       - targets: ["host.docker.internal:${EQ_PROMETHEUS_PORT}"]
-   ```
-
-3. **Set environment variables** in `../.env`:
-   ```sh
-   EQ_PROMETHEUS_PORT=9091
-   CELESTIA_NODE_PORT=26658
-   ```
-
-The system automatically detects which approach you're using and processes the configuration accordingly.
+- **No templates or complex processing** - Pure static configuration
+- **Docker Compose handles substitution** - Clean and standard approach
+- **Minimal complexity** - Easy to understand and maintain
+- **Fast startup** - No configuration processing delays
 
 ## Dashboards
 
@@ -360,17 +346,13 @@ Here's a complete example of setting up the monitoring stack with custom ports:
 Edit your `../.env` file:
 
 ```sh
-# Monitoring Service Ports
+# Monitoring Service Ports (External Access)
 PROMETHEUS_PORT=9090
 ALERTMANAGER_PORT=9093
 GRAFANA_PORT=3000
 NODE_EXPORTER_PORT=9100
 CADVISOR_PORT=8080
 BLACKBOX_EXPORTER_PORT=9115
-
-# External Service Ports (optional - only needed if different from defaults)
-EQ_PROMETHEUS_PORT=9091
-CELESTIA_NODE_PORT=26658
 
 # Grafana Configuration
 GF_SECURITY_ADMIN_USER=admin
@@ -386,7 +368,7 @@ RECEIVER_PORT=2021
 PROMETHEUS_RETENTION=200h
 ```
 
-**Note**: The system uses static configuration by default. External service ports (EQ_PROMETHEUS_PORT, CELESTIA_NODE_PORT) only need to be set if you're using non-default ports and have created a `prometheus.yml.template` file.
+**Note**: The system uses static configuration with Docker Compose port mapping. External services (EQ Service on port 9091, Celestia Node on port 26658) are configured with fixed ports in the prometheus.yml file. The variables above control external access to the monitoring services.
 
 ### 2. Test Configuration
 
