@@ -1,5 +1,6 @@
 /target
 /elf
 .env
+# some we want, git add -f <your-special.json> to override
 **/*.json
 *.log

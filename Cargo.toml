@@ -23,7 +23,7 @@ eq-common = { path = "common", version = "0.1.8" }
 eq-sdk = { path = "sdk", version = "0.1.8" }
 
 clap = "4.5"
-celestia-types = "0.11"
+celestia-types = "0.12"
 celestia-rpc = "0.11"
 nmt-rs = "0.2"
 sp1-zkvm = { version = "5.0", features = ["verify"] }
@@ -45,6 +45,10 @@ env_logger = "0.11"
 log = "0.4"
 base64 = "0.22"
 jsonrpsee = "0.25"
+prometheus-client = "0.23"
+hyper = "1.6"
+hyper-util = "0.1"
+http-body-util = "0.1"
 
 [patch.crates-io]
 # TODO: update to 5.0?

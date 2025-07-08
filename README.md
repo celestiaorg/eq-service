@@ -150,6 +150,20 @@ docker pull celestiaorg/eq-service:latest
 
 _Don't forget you need to [configure your environment](#configure)_.
 
+### Metrics and Alerts
+
+This service exposes a HTTP endpoint at `/metrics` that you can connect to [Prometeus](https://prometheus.io/) for service monitoring, alerts, and more.
+
+With the eq-service running locally (on metal, not in a container), you can connect a development only(!) server by using:
+
+```sh
+docker run -d \
+  --network="host" \
+  -p 127.0.0.1:9090:9090 \
+  -v $(pwd)/infra/prometheus.yml:/etc/prometheus/prometheus.yml \
+  prom/prometheus
+```
+
 ## Develop
 
 First, some tooling is required:
