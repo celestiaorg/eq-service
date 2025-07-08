@@ -75,7 +75,7 @@ impl PromMetrics {
 
         let zk_proof_wait_time = Histogram::new(
             // 5% of timeout seconds buckets from 0 to 110% (assuming we may sometimes blow past timeout)
-            (1..=22).map(|i| (i as f64 * 0.05) * zk_proof_gen_timeout_float),
+            (1..=22).map(|i| ((i as f64 * 0.05) * zk_proof_gen_timeout_float).floor()),
         );
         registry.register(
             "zk_proof_wait_time",

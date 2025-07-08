@@ -481,7 +481,7 @@ impl InclusionService {
         let duration = start_time.elapsed();
         self.metrics
             .zk_proof_wait_time
-            .observe(duration.as_secs_f64());
+            .observe(duration.as_secs_f64().round());
 
         Ok(proof)
     }
