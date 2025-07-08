@@ -4,7 +4,11 @@ use hyper::{body::Bytes, server::conn::http1, service::service_fn, Request, Resp
 use hyper_util::rt::TokioIo;
 use jsonrpsee::tracing::info;
 use prometheus_client::metrics::family::Family;
-use prometheus_client::{encoding::text::encode, metrics::counter::Counter, registry::Registry};
+use prometheus_client::{
+    encoding::text::encode, metrics::counter::Counter, metrics::histogram::Histogram,
+    registry::Registry,
+};
+use std::time::Duration;
 use std::{io, net::SocketAddr, sync::Arc};
 use tokio::sync::Notify;
 use tokio::{net::TcpListener, pin};
@@ -25,6 +29,8 @@ pub struct PromMetrics {
     pub jobs_finished: Counter<u64>,
     /// Counter for jobs failed
     pub jobs_errors: Family<ErrorLabels, Counter>,
+    /// Histogram for ZK proof wait times
+    pub zk_proof_wait_time: Histogram,
 }
 
 impl PromMetrics {
@@ -59,6 +65,24 @@ impl PromMetrics {
             jobs_errors.clone(),
         );
 
+        let zk_proof_gen_timeout_float = Duration::from_secs(
+            std::env::var("PROOF_GEN_TIMEOUT_SECONDS")
+                .expect("PROOF_GEN_TIMEOUT_SECONDS env var required")
+                .parse()
+                .expect("PROOF_GEN_TIMEOUT_SECONDS must be integer"),
+        )
+        .as_secs_f64();
+
+        let zk_proof_wait_time = Histogram::new(
+            // 5% of timeout seconds buckets from 0 to 110% (assuming we may sometimes blow past timeout)
+            (1..=22).map(|i| (i as f64 * 0.05) * zk_proof_gen_timeout_float),
+        );
+        registry.register(
+            "zk_proof_wait_time",
+            "Time taken to wait for ZK proof completion in seconds (Buckets of 5% PROOF_GEN_TIMEOUT_SECONDS env var)",
+            zk_proof_wait_time.clone(),
+        );
+
         PromMetrics {
             registry: Arc::new(registry),
             shutdown: Arc::new(Notify::new()),
@@ -66,6 +90,7 @@ impl PromMetrics {
             jobs_attempted,
             jobs_finished,
             jobs_errors,
+            zk_proof_wait_time,
         }
     }
 

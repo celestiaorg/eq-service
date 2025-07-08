@@ -13,7 +13,7 @@ use sp1_sdk::{
     SP1ProofWithPublicValues, SP1Stdin,
 };
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::{mpsc, OnceCell};
 
 /// Hardcoded ELF binary for the crate `program-keccak-inclusion`
@@ -463,6 +463,7 @@ impl InclusionService {
         request_id: SuccNetJobId,
     ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
         debug!("Waiting for proof from prover network");
+        let start_time = Instant::now();
         let zk_client_handle = self.get_zk_client_remote().await;
 
         let proof = zk_client_handle
@@ -475,6 +476,12 @@ impl InclusionService {
                 error!("UNHANDLED ZK client error: {e:?}");
                 InclusionServiceError::ZkClientError(format!("Unhandled Error: {e} PLEASE REPORT"))
             })?;
+
+        // Record the time taken to wait for the ZK proof
+        let duration = start_time.elapsed();
+        self.metrics
+            .zk_proof_wait_time
+            .observe(duration.as_secs_f64());
 
         Ok(proof)
     }
