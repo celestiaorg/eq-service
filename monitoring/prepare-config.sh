@@ -67,6 +67,9 @@ GRAFANA_TEMPLATE_FILE="$SCRIPT_DIR/grafana/datasources/datasource.yml.template"
 GRAFANA_STATIC_FILE="$SCRIPT_DIR/grafana/datasources/datasource.yml"
 GRAFANA_OUTPUT_FILE="$SCRIPT_DIR/grafana/datasources/datasource.yml"
 
+DASHBOARD_TEMPLATE_FILE="$SCRIPT_DIR/grafana/dashboards/eq-service-dashboard.json"
+DASHBOARD_OUTPUT_FILE="$SCRIPT_DIR/grafana/dashboards/eq-service-dashboard.json"
+
 # Process Prometheus configuration
 if [ -f "$PROMETHEUS_TEMPLATE_FILE" ]; then
     print_info "Processing prometheus.yml.template..."
@@ -132,5 +135,12 @@ else
     print_error "No grafana datasource configuration found (need either datasource.yml or datasource.yml.template)"
     exit 1
 fi
+
+# Process Grafana dashboard configuration
+print_info "Processing Grafana dashboard..."
+
+# Get the actual datasource UID from a running Grafana instance
+# This will be done after Grafana starts, so we'll create a separate script for this
+print_info "Dashboard processing will be handled by fix-dashboard.sh after Grafana starts"
 
 print_info "Configuration preparation complete"
