@@ -87,17 +87,21 @@ validate_configs() {
     # Validate Prometheus configuration
     if command_exists docker; then
         print_status "Validating Prometheus configuration..."
-        if ! docker run --rm -v "$SCRIPT_DIR/prometheus:/etc/prometheus" \
+        if ! docker run --rm \
+            -v "$SCRIPT_DIR/prometheus:/etc/prometheus:ro" \
+            --entrypoint /bin/promtool \
             prom/prometheus:latest \
-            promtool check config /etc/prometheus/prometheus.yml >/dev/null 2>&1; then
+            check config /etc/prometheus/prometheus.yml >/dev/null; then
             print_error "Prometheus configuration validation failed"
             exit 1
         fi
 
         print_status "Validating Prometheus alert rules..."
-        if ! docker run --rm -v "$SCRIPT_DIR/prometheus:/etc/prometheus" \
+        if ! docker run --rm \
+            -v "$SCRIPT_DIR/prometheus:/etc/prometheus:ro" \
+            --entrypoint /bin/promtool \
             prom/prometheus:latest \
-            promtool check rules /etc/prometheus/alert_rules.yml >/dev/null 2>&1; then
+            check rules /etc/prometheus/alert_rules.yml >/dev/null 2>&1; then
             print_error "Prometheus alert rules validation failed"
             exit 1
         fi
@@ -117,7 +121,7 @@ check_prerequisites() {
     fi
 
     # Check Docker Compose
-    if ! command_exists docker-compose; then
+    if ! command_exists docker compose; then
         print_error "Docker Compose is not installed or not in PATH"
         exit 1
     fi
@@ -166,11 +170,11 @@ start_services() {
 
     # Pull latest images
     print_status "Pulling latest Docker images..."
-    docker-compose pull
+    docker compose pull
 
     # Start services
     print_status "Starting services..."
-    docker-compose up -d
+    docker compose up -d
 
     # Wait for services to be ready
     wait_for_service "Prometheus" 9090
@@ -183,7 +187,7 @@ start_services() {
 # Function to show service status
 show_status() {
     print_header "Service Status"
-    docker-compose ps
+    docker compose ps
     echo
 
     print_header "Service URLs"
@@ -243,7 +247,7 @@ EOF
 stop_services() {
     print_header "Stopping monitoring stack..."
     cd "$SCRIPT_DIR"
-    docker-compose down
+    docker compose down
     print_status "All services stopped"
 }
 
@@ -251,7 +255,7 @@ stop_services() {
 restart_services() {
     print_header "Restarting monitoring stack..."
     cd "$SCRIPT_DIR"
-    docker-compose restart
+    docker compose restart
     print_status "All services restarted"
 }
 
@@ -259,9 +263,9 @@ restart_services() {
 show_logs() {
     cd "$SCRIPT_DIR"
     if [ "$1" == "follow" ]; then
-        docker-compose logs -f
+        docker compose logs -f
     else
-        docker-compose logs
+        docker compose logs
     fi
 }
 
