@@ -47,7 +47,6 @@ test_config_files() {
 
     local files_to_check=(
         "docker-compose.yml"
-        "prometheus/prometheus.yml"
         "prometheus/alert_rules.yml"
         "alertmanager/alertmanager.yml"
         "grafana/datasources/datasource.yml"
@@ -56,6 +55,12 @@ test_config_files() {
         "receiver/Dockerfile"
         "receiver/app.py"
         "receiver/requirements.txt"
+    )
+
+    # At least one of these must exist
+    local prometheus_files=(
+        "prometheus/prometheus.yml"
+        "prometheus/prometheus.yml.template"
     )
 
     local missing_files=()
@@ -69,6 +74,20 @@ test_config_files() {
         fi
     done
 
+    # Check that at least one prometheus configuration exists
+    local prometheus_found=false
+    for file in "${prometheus_files[@]}"; do
+        if [ -f "$SCRIPT_DIR/$file" ]; then
+            print_status "✓ $file exists"
+            prometheus_found=true
+        fi
+    done
+
+    if [ "$prometheus_found" = false ]; then
+        print_error "✗ No prometheus configuration found (need either prometheus.yml or prometheus.yml.template)"
+        missing_files+=("prometheus configuration")
+    fi
+
     if [ ${#missing_files[@]} -gt 0 ]; then
         print_error "Missing files: ${missing_files[*]}"
         return 1
@@ -78,40 +97,79 @@ test_config_files() {
     return 0
 }
 
-# Function to test static configuration
-test_static_configuration() {
-    print_header "Testing static configuration..."
+# Function to test prometheus configuration
+test_prometheus_configuration() {
+    print_header "Testing Prometheus configuration..."
 
-    # Check if prometheus.yml exists
-    if [ ! -f "$SCRIPT_DIR/prometheus/prometheus.yml" ]; then
-        print_error "✗ prometheus.yml not found"
-        return 1
-    fi
+    # Check if template exists, otherwise check static config
+    if [ -f "$SCRIPT_DIR/prometheus/prometheus.yml.template" ]; then
+        print_status "Using template-based configuration"
 
-    # Check that configuration has expected static values
-    if grep -q "host.docker.internal:9091" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
-        print_status "✓ EQ Service configured with default port 9091"
+        # Test template processing
+        local temp_dir=$(mktemp -d)
+        export EQ_PROMETHEUS_PORT=9091
+        export CELESTIA_NODE_PORT=26658
+
+        if command -v envsubst >/dev/null 2>&1; then
+            envsubst < "$SCRIPT_DIR/prometheus/prometheus.yml.template" > "$temp_dir/prometheus.yml"
+
+            if grep -q "host.docker.internal:9091" "$temp_dir/prometheus.yml"; then
+                print_status "✓ EQ Service port substitution works"
+            else
+                print_error "✗ EQ Service port substitution failed"
+                rm -rf "$temp_dir"
+                return 1
+            fi
+
+            if grep -q "host.docker.internal:26658" "$temp_dir/prometheus.yml"; then
+                print_status "✓ Celestia Node port substitution works"
+            else
+                print_error "✗ Celestia Node port substitution failed"
+                rm -rf "$temp_dir"
+                return 1
+            fi
+        else
+            print_error "✗ envsubst not available for template testing"
+            rm -rf "$temp_dir"
+            return 1
+        fi
+
+        rm -rf "$temp_dir"
+    elif [ -f "$SCRIPT_DIR/prometheus/prometheus.yml" ]; then
+        print_status "Using static configuration"
+
+        if grep -q "host.docker.internal:9091" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
+            print_status "✓ EQ Service configured with default port 9091"
+        else
+            print_error "✗ EQ Service not configured correctly"
+            return 1
+        fi
+
+        if grep -q "host.docker.internal:26658" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
+            print_status "✓ Celestia Node configured with default port 26658"
+        else
+            print_error "✗ Celestia Node not configured correctly"
+            return 1
+        fi
     else
-        print_error "✗ EQ Service not configured correctly"
+        print_error "✗ No prometheus configuration found"
         return 1
     fi
 
-    if grep -q "host.docker.internal:26658" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
-        print_status "✓ Celestia Node configured with default port 26658"
-    else
-        print_error "✗ Celestia Node not configured correctly"
-        return 1
+    # Check internal service configurations (should be same in both template and static)
+    local config_file="$SCRIPT_DIR/prometheus/prometheus.yml"
+    if [ -f "$SCRIPT_DIR/prometheus/prometheus.yml.template" ]; then
+        config_file="$SCRIPT_DIR/prometheus/prometheus.yml.template"
     fi
 
-    # Check internal service configurations
-    if grep -q "node-exporter:9100" "$SCRIPT_DIR/prometheus/prometheus.yml"; then
+    if grep -q "node-exporter:9100" "$config_file"; then
         print_status "✓ Internal services use Docker service names"
     else
         print_error "✗ Internal service configuration incorrect"
         return 1
     fi
 
-    print_status "Static configuration test completed"
+    print_status "Prometheus configuration test completed"
     return 0
 }
 
@@ -149,6 +207,8 @@ test_port_configs() {
         "CADVISOR_PORT:${CADVISOR_PORT:-8080}"
         "BLACKBOX_EXPORTER_PORT:${BLACKBOX_EXPORTER_PORT:-9115}"
         "RECEIVER_PORT:${RECEIVER_PORT:-2021}"
+        "EQ_PROMETHEUS_PORT:${EQ_PROMETHEUS_PORT:-9091}"
+        "CELESTIA_NODE_PORT:${CELESTIA_NODE_PORT:-26658}"
     )
 
     for port_config in "${ports[@]}"; do
@@ -279,7 +339,9 @@ test_startup_sequence() {
     print_status "3. Port mappings handled by Docker Compose"
 
     # Check prometheus configuration
-    if [ -f "$SCRIPT_DIR/prometheus/prometheus.yml" ]; then
+    if [ -f "$SCRIPT_DIR/prometheus/prometheus.yml.template" ]; then
+        print_status "✓ Template-based prometheus configuration ready"
+    elif [ -f "$SCRIPT_DIR/prometheus/prometheus.yml" ]; then
         print_status "✓ Static prometheus configuration ready"
     else
         print_error "✗ No prometheus configuration found"
@@ -289,6 +351,16 @@ test_startup_sequence() {
     # Check that monitoring port vars have defaults
     local monitoring_ports=(PROMETHEUS_PORT GRAFANA_PORT ALERTMANAGER_PORT)
     for var in "${monitoring_ports[@]}"; do
+        if [ -n "${!var}" ]; then
+            print_status "✓ $var=${!var}"
+        else
+            print_warning "⚠ $var not set, will use default"
+        fi
+    done
+
+    # Check external service ports
+    local external_ports=(EQ_PROMETHEUS_PORT CELESTIA_NODE_PORT)
+    for var in "${external_ports[@]}"; do
         if [ -n "${!var}" ]; then
             print_status "✓ $var=${!var}"
         else
@@ -337,11 +409,11 @@ run_all_tests() {
 
     # Run each test
     test_config_files && test_results+=("✓ Config files") || test_results+=("✗ Config files")
-    test_static_configuration && test_results+=("✓ Static config") || test_results+=("✗ Static config")
+    test_prometheus_configuration && test_results+=("✓ Prometheus config") || test_results+=("✗ Prometheus config")
     test_docker_compose && test_results+=("✓ Docker Compose") || test_results+=("✗ Docker Compose")
     test_port_configs && test_results+=("✓ Port configs") || test_results+=("✗ Port configs")
     test_grafana_config && test_results+=("✓ Grafana config") || test_results+=("✗ Grafana config")
-    test_prometheus_config && test_results+=("✓ Prometheus config") || test_results+=("✗ Prometheus config")
+    test_prometheus_config && test_results+=("✓ Prometheus retention") || test_results+=("✗ Prometheus retention")
     test_alertmanager_config && test_results+=("✓ Alertmanager config") || test_results+=("✗ Alertmanager config")
     test_receiver_config && test_results+=("✓ Receiver config") || test_results+=("✗ Receiver config")
     test_startup_sequence && test_results+=("✓ Startup sequence") || test_results+=("✗ Startup sequence")
@@ -381,12 +453,12 @@ OPTIONS:
     -h, --help              Show this help message
     -a, --all               Run all tests (default)
     -f, --files             Test configuration files only
-    -e, --env               Test static configuration
+    -e, --env               Test Prometheus configuration
     -d, --docker            Test Docker Compose configuration
     -p, --ports             Test port configurations
     -g, --grafana           Test Grafana configuration
-    -r, --prometheus        Test Prometheus configuration
-    -a, --alertmanager      Test Alertmanager configuration
+    -r, --prometheus        Test Prometheus retention configuration
+    -m, --alertmanager      Test Alertmanager configuration
     -c, --receiver          Test receiver configuration
     -s, --startup           Test startup sequence
     --summary               Show configuration summary
@@ -413,7 +485,7 @@ main() {
             exit $?
             ;;
         -e|--env)
-            test_static_configuration
+            test_prometheus_configuration
             exit $?
             ;;
         -d|--docker)
@@ -432,7 +504,7 @@ main() {
             test_prometheus_config
             exit $?
             ;;
-        -a|--alertmanager)
+        -m|--alertmanager)
             test_alertmanager_config
             exit $?
             ;;

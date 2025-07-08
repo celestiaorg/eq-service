@@ -200,6 +200,10 @@ start_services() {
 
     cd "$SCRIPT_DIR"
 
+    # Prepare configuration
+    print_status "Preparing configuration..."
+    ./prepare-config.sh
+
     # Pull latest images
     print_status "Pulling latest Docker images..."
     docker compose pull
@@ -337,6 +341,8 @@ main() {
             exit 0
             ;;
         --restart)
+            print_status "Preparing configuration..."
+            ./prepare-config.sh
             restart_services
             exit 0
             ;;
@@ -352,6 +358,11 @@ main() {
             # Default action: start monitoring stack
             check_prerequisites
             validate_configs
+
+            # Prepare configuration before starting
+            print_status "Preparing configuration..."
+            ./prepare-config.sh
+
             start_services
             show_status
             check_eq_service
