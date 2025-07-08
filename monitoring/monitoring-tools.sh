@@ -49,9 +49,17 @@ wait_for_service() {
     print_status "Waiting for $service_name to be ready on port $port..."
 
     while [ $attempt -lt $max_attempts ]; do
-        if curl -s -o /dev/null -w "%{http_code}" http://localhost:$port > /dev/null 2>&1; then
-            print_status "$service_name is ready!"
-            return 0
+        if [ "$service_name" = "Alertmanager" ]; then
+            # Use v2 API for Alertmanager
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:$port/api/v2/status | grep -q "200"; then
+                print_status "$service_name is ready!"
+                return 0
+            fi
+        else
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:$port > /dev/null 2>&1; then
+                print_status "$service_name is ready!"
+                return 0
+            fi
         fi
 
         attempt=$((attempt + 1))

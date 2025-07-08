@@ -139,13 +139,14 @@ To start and interact with all monitoring services, use [./monitoring-tools.sh](
 
 ### Access the Services
 
-- **Grafana**: <http://localhost:${GRAFANA_PORT:-3000}>
-  - Set credentials in `../.env` = `GF_SECURITY_ADMIN_USER=admin` and `GF_SECURITY_ADMIN_PASSWORD=admin` by default
-- **Prometheus**: <http://localhost:${PROMETHEUS_PORT:-9090}>
-- **Alertmanager**: <http://localhost:${ALERTMANAGER_PORT:-9093}>
-- **Alert Receiver**: <http://localhost:${RECEIVER_PORT:-2021}>
-
 **Note**: The actual ports will be determined by the environment variables set in `../.env`. The values shown above are defaults if no environment variables are set.
+
+- **Grafana**: <http://localhost:3000>
+  - Dashboard: <http://localhost:3000/d/eq-service-dashboard/eq-service-dashboard>
+  - Set credentials in `../.env` = `GF_SECURITY_ADMIN_USER=admin` and `GF_SECURITY_ADMIN_PASSWORD=admin` by default
+- **Prometheus**: <http://localhost:9090>
+- **Alertmanager**: <http://localhost:9093>
+- **Alert Receiver**: <http://localhost:2021>
 
 ## Configuration Approach
 

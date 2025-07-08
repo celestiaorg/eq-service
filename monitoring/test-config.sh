@@ -224,6 +224,49 @@ test_receiver_config() {
     return 0
 }
 
+# Function to test alertmanager configuration
+test_alertmanager_config() {
+    print_header "Testing Alertmanager configuration..."
+
+    # Check if alertmanager.yml exists
+    if [ ! -f "$SCRIPT_DIR/alertmanager/alertmanager.yml" ]; then
+        print_error "✗ alertmanager.yml not found"
+        return 1
+    fi
+
+    # Test with Docker if available
+    if command -v docker >/dev/null 2>&1; then
+        print_status "Validating Alertmanager configuration with Docker..."
+        if docker run --rm -v "$SCRIPT_DIR/alertmanager:/etc/alertmanager" prom/alertmanager:latest \
+           --config.file=/etc/alertmanager/alertmanager.yml --version >/dev/null 2>&1; then
+            print_status "✓ Alertmanager configuration is valid"
+        else
+            print_error "✗ Alertmanager configuration is invalid"
+            return 1
+        fi
+    else
+        print_warning "Docker not available, skipping Alertmanager validation"
+    fi
+
+    # Check for required receivers
+    if grep -q "web.hook" "$SCRIPT_DIR/alertmanager/alertmanager.yml"; then
+        print_status "✓ Default webhook receiver configured"
+    else
+        print_error "✗ Default webhook receiver not found"
+        return 1
+    fi
+
+    if grep -q "eq-service-alerts" "$SCRIPT_DIR/alertmanager/alertmanager.yml"; then
+        print_status "✓ EQ Service alerts receiver configured"
+    else
+        print_error "✗ EQ Service alerts receiver not found"
+        return 1
+    fi
+
+    print_status "Alertmanager configuration test completed"
+    return 0
+}
+
 # Function to simulate startup sequence
 test_startup_sequence() {
     print_header "Testing startup sequence simulation..."
@@ -299,6 +342,7 @@ run_all_tests() {
     test_port_configs && test_results+=("✓ Port configs") || test_results+=("✗ Port configs")
     test_grafana_config && test_results+=("✓ Grafana config") || test_results+=("✗ Grafana config")
     test_prometheus_config && test_results+=("✓ Prometheus config") || test_results+=("✗ Prometheus config")
+    test_alertmanager_config && test_results+=("✓ Alertmanager config") || test_results+=("✗ Alertmanager config")
     test_receiver_config && test_results+=("✓ Receiver config") || test_results+=("✗ Receiver config")
     test_startup_sequence && test_results+=("✓ Startup sequence") || test_results+=("✗ Startup sequence")
 
@@ -342,6 +386,7 @@ OPTIONS:
     -p, --ports             Test port configurations
     -g, --grafana           Test Grafana configuration
     -r, --prometheus        Test Prometheus configuration
+    -a, --alertmanager      Test Alertmanager configuration
     -c, --receiver          Test receiver configuration
     -s, --startup           Test startup sequence
     --summary               Show configuration summary
@@ -385,6 +430,10 @@ main() {
             ;;
         -r|--prometheus)
             test_prometheus_config
+            exit $?
+            ;;
+        -a|--alertmanager)
+            test_alertmanager_config
             exit $?
             ;;
         -c|--receiver)
