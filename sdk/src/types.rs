@@ -4,7 +4,7 @@ use base64::Engine;
 use celestia_types::{blob::Commitment, block::Height as BlockHeight, nmt::Namespace};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct BlobId {
     pub height: BlockHeight,
     pub namespace: Namespace,
@@ -74,7 +74,7 @@ impl FromStr for BlobId {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.splitn(4, ":");
+        let mut parts = s.splitn(5, ":");
 
         let height = BlockHeight::from_str(parts.next().ok_or("Height missing (u64)")?)?;
 
@@ -82,6 +82,7 @@ impl FromStr for BlobId {
             .next()
             .ok_or("Namespace missing (base64)")?
             .to_string();
+        println!("{}", &n_base64);
         let n_bytes = base64::engine::general_purpose::STANDARD.decode(n_base64)?;
         let namespace = Namespace::new_v0(&n_bytes)?;
 
@@ -114,5 +115,32 @@ impl FromStr for BlobId {
             l2_chain_id,
             batch_number,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use base64::engine::general_purpose::STANDARD;
+
+    use super::*;
+
+    #[test]
+    fn test_blob_id_from_str() {
+        //let blob_id
+        let height: u32 = 6952283;
+        //let namespace = "736f762d6d696e692d61";
+        let namespace = "000000000000000000000000000000000000736f762d6d696e692d61";
+        let commitment = "JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=";
+        let blob_id = BlobId::new(
+            BlockHeight::from(height),
+            Namespace::new_v0(&hex::decode(namespace).unwrap()).unwrap(),
+            Commitment::new(STANDARD.decode(commitment).unwrap().try_into().unwrap()),
+            0,
+            0
+        );
+        let blob_id_to_str = blob_id.to_string();
+        let blob_id_from_str = BlobId::from_str("6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0").unwrap();
+        assert_eq!(blob_id_from_str, blob_id);
+        assert_eq!(blob_id_to_str, "6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0");
     }
 }
