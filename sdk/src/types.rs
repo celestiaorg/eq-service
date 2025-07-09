@@ -96,17 +96,17 @@ impl FromStr for BlobId {
             .map_err(|_| "Commitment must be 32 bytes!")?;
         let commitment = Commitment::new(c_hash.into());
 
-        let batch_number = parts
-            .next()
-            .ok_or("Batch number missing (u32)")?
-            .to_string();
-        let batch_number = u32::from_str(&batch_number)?;
-
         let l2_chain_id = parts
             .next()
             .ok_or("L2 chain ID missing (u64)")?
             .to_string();
         let l2_chain_id = u64::from_str(&l2_chain_id)?;
+
+        let batch_number = parts
+            .next()
+            .ok_or("Batch number missing (u32)")?
+            .to_string();
+        let batch_number = u32::from_str(&batch_number)?;
 
         Ok(Self {
             height,
