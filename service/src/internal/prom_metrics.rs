@@ -9,18 +9,15 @@ use prometheus_client::{
     registry::Registry,
 };
 use std::time::Duration;
-use std::{io, net::SocketAddr, sync::Arc};
-use tokio::sync::Notify;
-use tokio::{net::TcpListener, pin};
+use std::{net::SocketAddr, sync::Arc};
+use tokio::net::TcpListener;
 
-use eq_common::ErrorLabels;
+use eq_common::{ErrorLabels, InclusionServiceError};
 
 /// All Service's Prometheus metrics in a single object
 pub struct PromMetrics {
     /// Shared registry for encoding
     pub registry: Arc<Registry>,
-    /// Shutdown gracefully
-    shutdown: Arc<Notify>,
     /// Counter for gRPC requests
     pub grpc_req: Counter<u64>,
     /// Counter for attempted jobs
@@ -85,7 +82,6 @@ impl PromMetrics {
 
         PromMetrics {
             registry: Arc::new(registry),
-            shutdown: Arc::new(Notify::new()),
             grpc_req,
             jobs_attempted,
             jobs_finished,
@@ -95,55 +91,52 @@ impl PromMetrics {
     }
 
     /// Start the HTTP endpoint that serves metrics
-    pub async fn serve(self: Arc<Self>, addr: SocketAddr) -> io::Result<()> {
-        let listener = TcpListener::bind(addr).await?;
+    pub async fn serve(self: Arc<Self>, addr: SocketAddr) -> Result<(), InclusionServiceError> {
+        let listener = TcpListener::bind(addr)
+            .await
+            .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
         let server = http1::Builder::new();
 
         info!("Prometheus serving on {:?}", addr);
-        while let Ok((stream, _)) = listener.accept().await {
-            let metrics = Arc::clone(&self);
-            let server_cln = server.clone();
-            let notify = self.shutdown.clone();
-            tokio::spawn(async move {
-                let conn = server_cln.serve_connection(
-                    TokioIo::new(stream),
-                    service_fn(move |_: Request<_>| {
-                        let reg = Arc::clone(&metrics.registry);
-                        Box::pin(async move {
-                            // render the registry into text
-                            let mut buf = String::new();
-                            match encode(&mut buf, &reg) {
-                                Ok(_) => {
-                                    let body = full(Bytes::from(buf));
-                                    Ok(Response::builder()
-                                        .header(
-                                            hyper::header::CONTENT_TYPE,
-                                            "application/openmetrics-text; version=1.0.0; charset=utf-8",
-                                        )
-                                        .body(body)
-                                        .expect("Response malformed"))
-                                }
-                                Err(e) => Err(io::Error::new(io::ErrorKind::Other, e)),
-                            }
-                        })
-                    }),
-                );
 
-                pin!(conn);
-                tokio::select! {
-                                _ = conn.as_mut()      => {},               // connection ended
-                                    _ = notify.notified() => {
-                    conn.as_mut().graceful_shutdown();
-                },
-                            }
+        loop {
+            let (stream, _) = listener
+                .accept()
+                .await
+                .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
+            let metrics = Arc::clone(&self);
+            let builder = server.clone();
+
+            tokio::spawn(async move {
+                let reg = Arc::clone(&metrics.registry);
+
+                let service = service_fn(move |_: Request<_>| {
+                    let reg = Arc::clone(&reg);
+                    async move {
+                        let mut buf = String::new();
+                        match encode(&mut buf, &reg) {
+                            Ok(_) => Ok::<_, _>(
+                                Response::builder()
+                                    .header(
+                                        hyper::header::CONTENT_TYPE,
+                                        "application/openmetrics-text; version=1.0.0; charset=utf-8",
+                                    )
+                                    .body(full(Bytes::from(buf)))
+                                    .expect("Response is malformed"),
+                            ),
+                            Err(e) => Err(InclusionServiceError::InternalError(e.to_string())),
+                        }
+                    }
+                });
+
+                if let Err(e) = builder
+                    .serve_connection(TokioIo::new(stream), service)
+                    .await
+                {
+                    info!("Prometheus connection error: {:?}", e);
+                }
             });
         }
-
-        Ok(())
-    }
-
-    pub fn shutdown(&self) {
-        self.shutdown.notify_waiters();
     }
 }
 

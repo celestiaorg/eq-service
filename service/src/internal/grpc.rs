@@ -76,6 +76,7 @@ impl Inclusion for InclusionServiceArc {
                         }
                         Some(retry_status) => {
                             warn!("Job is Retryable Failure, returning status & retrying");
+                            self.0.metrics.jobs_attempted.inc();
                             // We retry errors on each call to the gRPC
                             // for a specific [Job] by sending to the queue
                             match self.0.send_job_with_new_status(job_key, *retry_status, job) {
@@ -149,6 +150,7 @@ impl Inclusion for InclusionServiceArc {
         }
 
         info!("New {job:?} sending to worker and adding to queue");
+        self.0.metrics.jobs_attempted.inc();
         self.0
             .queue_db
             .insert(

@@ -97,13 +97,12 @@ impl InclusionService {
         while let Some(Some(job)) = job_receiver.recv().await {
             let service = self.clone();
             let metrics = self.metrics.clone();
-            metrics.jobs_attempted.inc();
             tokio::spawn(async move {
                 debug!("Job worker received {job:?}",);
-                let _ = service
-                    .prove(job)
-                    .await
-                    .map_err(|e| count_error(&metrics, e)); //Don't return with "?", we run keep looping
+                let _ = service.prove(job).await.map_err(|e| {
+                    debug!("COUNTED ERROR METRIC ---{e:?}");
+                    count_error(&metrics, e)
+                }); //Don't return with "?", we run keep looping
             });
         }
 
@@ -566,7 +565,6 @@ impl InclusionService {
 
     pub fn shutdown(&self) {
         info!("Terminating worker, finishing preexisting jobs");
-        let _ = self.metrics.shutdown();
         let _ = self.job_sender.send(None); // Break loop in `job_worker`
     }
 }

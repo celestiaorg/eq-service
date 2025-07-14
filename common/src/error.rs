@@ -40,19 +40,19 @@ pub enum InclusionServiceError {
 impl EncodeLabelValue for InclusionServiceError {
     fn encode(&self, encoder: &mut LabelValueEncoder) -> Result<(), FmtError> {
         use InclusionServiceError::*;
-        let name = match self {
-            MissingBlobIndex => "MissingBlobIndex",
-            FailedShareRangeProofSanityCheck => "FailedShareRangeProofSanityCheck",
-            KeccakHashConversion => "KeccakHashConversion",
-            RowRootVerificationFailed => "RowRootVerificationFailed",
-            ShareConversionError(_) => "ShareConversionError",
-            InternalError(_) => "InternalError",
-            ZkClientError(_) => "ZkClientError",
-            DaClientError(_) => "DaClientError",
-            InvalidParameter(_) => "InvalidParameter",
-            OutputDeserializationError => "OutputDeserializationError",
+        let name: String = match self {
+            MissingBlobIndex => "MissingBlobIndex".to_string(),
+            FailedShareRangeProofSanityCheck => "FailedShareRangeProofSanityCheck".to_string(),
+            KeccakHashConversion => "KeccakHashConversion".to_string(),
+            RowRootVerificationFailed => "RowRootVerificationFailed".to_string(),
+            ShareConversionError(e) => format!("ShareConversionError({})", e),
+            InternalError(e) => format!("ShareConversionError({})", e),
+            ZkClientError(e) => format!("ZkClientError({})", e),
+            DaClientError(e) => format!("DaClientError({})", e),
+            InvalidParameter(e) => format!("InvalidParameter({})", e),
+            OutputDeserializationError => "OutputDeserializationError".to_string(),
         };
-        encoder.write_str(name)?;
+        encoder.write_str(name.as_str())?;
         Ok(())
     }
 }
