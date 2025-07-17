@@ -11,16 +11,16 @@ default-members = ["service"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
-authors = ["Nuke <nuke-web3@proton.me>", "c-node <chuckhead7@gmail.com>"]
+authors = ["Nuke <nuke-web3@proton.me>", "c-node <connor@s1nus.com>"]
 license = "MIT"
 homepage = "https://celestia.org"
 repository = "https://github.com/celestiaorg/eq-service"
 
 [workspace.dependencies]
-eq-common = { path = "common", version = "0.1.8" }
-eq-sdk = { path = "sdk", version = "0.1.8" }
+eq-common = { path = "common", version = "0.1.9" }
+eq-sdk = { path = "sdk", version = "0.1.9" }
 
 clap = "4.5"
 celestia-types = "0.12"
