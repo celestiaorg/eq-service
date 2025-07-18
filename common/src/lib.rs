@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "host")]
 mod error;
 #[cfg(feature = "host")]
-pub use error::InclusionServiceError;
+pub use error::{ErrorLabels, InclusionServiceError};
 
 #[cfg(feature = "grpc")]
 /// gRPC generated bindings

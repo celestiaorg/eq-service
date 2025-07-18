@@ -1,7 +1,10 @@
+use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue, LabelValueEncoder};
 use serde::{Deserialize, Serialize};
+use std::fmt::Error as FmtError;
+use std::fmt::Write;
 use thiserror::Error;
 
-#[derive(Clone, Error, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Hash, Error, Debug, Serialize, Deserialize)]
 pub enum InclusionServiceError {
     #[error("Blob index not found")]
     MissingBlobIndex,
@@ -32,4 +35,29 @@ pub enum InclusionServiceError {
 
     #[error("Failed to deserialize KeccakInclusionToDataRootProofOutput")]
     OutputDeserializationError,
+}
+
+impl EncodeLabelValue for InclusionServiceError {
+    fn encode(&self, encoder: &mut LabelValueEncoder) -> Result<(), FmtError> {
+        use InclusionServiceError::*;
+        let name: String = match self {
+            MissingBlobIndex => "MissingBlobIndex".to_string(),
+            FailedShareRangeProofSanityCheck => "FailedShareRangeProofSanityCheck".to_string(),
+            KeccakHashConversion => "KeccakHashConversion".to_string(),
+            RowRootVerificationFailed => "RowRootVerificationFailed".to_string(),
+            ShareConversionError(e) => format!("ShareConversionError({})", e),
+            InternalError(e) => format!("ShareConversionError({})", e),
+            ZkClientError(e) => format!("ZkClientError({})", e),
+            DaClientError(e) => format!("DaClientError({})", e),
+            InvalidParameter(e) => format!("InvalidParameter({})", e),
+            OutputDeserializationError => "OutputDeserializationError".to_string(),
+        };
+        encoder.write_str(name.as_str())?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct ErrorLabels {
+    pub error_type: InclusionServiceError,
 }

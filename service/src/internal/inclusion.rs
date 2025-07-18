@@ -1,7 +1,8 @@
+use crate::internal::prom_metrics::PromMetrics;
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
-use eq_common::{InclusionServiceError, ZKStackEqProofInput};
+use eq_common::{ErrorLabels, InclusionServiceError, ZKStackEqProofInput};
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
 use sha3::Keccak256;
@@ -12,7 +13,7 @@ use sp1_sdk::{
     SP1ProofWithPublicValues, SP1Stdin,
 };
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::{mpsc, OnceCell};
 
 /// Hardcoded ELF binary for the crate `program-keccak-inclusion`
@@ -41,6 +42,7 @@ pub struct InclusionService {
     pub config: InclusionServiceConfig,
     da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
     zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+    pub metrics: Arc<PromMetrics>,
     pub config_db: SledTree,
     pub queue_db: SledTree,
     pub finished_db: SledTree,
@@ -52,6 +54,7 @@ impl InclusionService {
         config: InclusionServiceConfig,
         da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
         zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+        metrics: Arc<PromMetrics>,
         config_db: SledTree,
         queue_db: SledTree,
         finished_db: SledTree,
@@ -61,6 +64,7 @@ impl InclusionService {
             config,
             da_client_handle,
             zk_client_handle,
+            metrics,
             config_db,
             queue_db,
             finished_db,
@@ -92,9 +96,13 @@ impl InclusionService {
         debug!("Job worker started");
         while let Some(Some(job)) = job_receiver.recv().await {
             let service = self.clone();
+            let metrics = self.metrics.clone();
             tokio::spawn(async move {
                 debug!("Job worker received {job:?}",);
-                let _ = service.prove(job).await; //Don't return with "?", we run keep looping
+                let _ = service.prove(job).await.map_err(|e| {
+                    debug!("COUNTED ERROR METRIC ---{e:?}");
+                    count_error(&metrics, e)
+                }); //Don't return with "?", we run keep looping
             });
         }
 
@@ -149,6 +157,7 @@ impl InclusionService {
                             info!("🎉 {job:?} Finished!");
                             job_status = JobStatus::ZkProofFinished(zk_proof);
                             self.finalize_job(&job_key, job_status)?;
+                            self.metrics.jobs_finished.inc();
                         }
                         Err(e) => {
                             error!("{job:?} failed progressing ZkProofPending: {e}");
@@ -455,6 +464,7 @@ impl InclusionService {
         request_id: SuccNetJobId,
     ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
         debug!("Waiting for proof from prover network");
+        let start_time = Instant::now();
         let zk_client_handle = self.get_zk_client_remote().await;
 
         let proof = zk_client_handle
@@ -467,6 +477,12 @@ impl InclusionService {
                 error!("UNHANDLED ZK client error: {e:?}");
                 InclusionServiceError::ZkClientError(format!("Unhandled Error: {e} PLEASE REPORT"))
             })?;
+
+        // Record the time taken to wait for the ZK proof
+        let duration = start_time.elapsed();
+        self.metrics
+            .zk_proof_wait_time
+            .observe(duration.as_secs_f64().round());
 
         Ok(proof)
     }
@@ -550,7 +566,15 @@ impl InclusionService {
     }
 
     pub fn shutdown(&self) {
-        info!("Terminating worker,finishing preexisting jobs");
+        info!("Terminating worker, finishing preexisting jobs");
         let _ = self.job_sender.send(None); // Break loop in `job_worker`
     }
+}
+
+/// Helper to count/log the error for Prometheus metrics
+fn count_error(metrics: &PromMetrics, e: InclusionServiceError) {
+    let _ = metrics
+        .jobs_errors
+        .get_or_create(&ErrorLabels { error_type: e })
+        .inc();
 }

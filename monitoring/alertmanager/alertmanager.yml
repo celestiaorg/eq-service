@@ -1,0 +1,135 @@
+global:
+  # The smarthost and SMTP sender used for mail notifications.
+  smtp_smarthost: "localhost:587"
+  smtp_from: "alertmanager@eq-service.local"
+  smtp_auth_username: "alertmanager@eq-service.local"
+  smtp_auth_password: "password"
+
+# The directory from which notification templates are read.
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+# The root route on which each incoming alert enters.
+route:
+  # The labels by which incoming alerts are grouped together. For example,
+  # multiple alerts coming in for cluster=A and alertname=LatencyHigh would
+  # be batched into a single group.
+  group_by: ["alertname", "cluster", "service"]
+
+  # When a new group of alerts is created by an incoming alert, wait at
+  # least 'group_wait' to send the initial notification.
+  group_wait: 10s
+
+  # When the first notification was sent, wait 'group_interval' to send a batch
+  # of new alerts that started firing for that group.
+  group_interval: 10s
+
+  # If an alert has successfully been sent, wait 'repeat_interval' to
+  # resend them.
+  repeat_interval: 1h
+
+  # A default receiver
+  receiver: web.hook
+
+  # All the above attributes are inherited by all child routes and can
+  # overwritten on each.
+  routes:
+    # This routes performs a regular expression match on alert labels to
+    # catch alerts that are related to a list of services.
+    - match_re:
+        service: ^(eq-service|prometheus|alertmanager)$
+      receiver: web.hook
+      # The service has a sub-route for critical alerts, any alerts
+      # that do not match, i.e. severity != critical, fall-back to the
+      # parent node and are sent to 'team-X-mails'
+      routes:
+        - match:
+            severity: critical
+          receiver: web.hook.critical
+
+    # Route for EQ Service specific alerts
+    - match:
+        job: eq-service
+      receiver: eq-service-alerts
+      routes:
+        - match:
+            severity: critical
+          receiver: eq-service-critical
+
+    # Route for external dependency alerts
+    - match_re:
+        alertname: ^(CelestiaNodeDown|SuccinctNetworkDown)$
+      receiver: external-deps-alerts
+
+    # Route for system-level alerts
+    - match_re:
+        alertname: ^(NodeExporterDown|CadvisorDown|PrometheusConfigReloadFailed)$
+      receiver: system-alerts
+
+# Inhibition rules allow to mute a set of alerts given that another alert is
+# firing.
+inhibit_rules:
+  - source_match:
+      severity: "critical"
+    target_match:
+      severity: "warning"
+    # Apply inhibition if the alertname is the same.
+    equal: ["alertname", "cluster", "service"]
+
+receivers:
+  - name: "web.hook"
+    webhook_configs:
+      - url: "http://receiver:2021/webhook"
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: "webhook"
+            password: "webhook"
+
+  - name: "web.hook.critical"
+    webhook_configs:
+      - url: "http://receiver:2021/webhook/critical"
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: "webhook"
+            password: "webhook"
+
+  - name: "eq-service-alerts"
+    webhook_configs:
+      - url: "http://receiver:2021/webhook/eq-service"
+        send_resolved: true
+    # Uncomment and configure for email notifications
+    # email_configs:
+    # - to: 'team@example.com'
+    #   subject: 'EQ Service Alert: {{ .GroupLabels.alertname }}'
+    #   body: |
+    #     {{ range .Alerts }}
+    #     Alert: {{ .Annotations.summary }}
+    #     Description: {{ .Annotations.description }}
+    #     {{ end }}
+
+  - name: "eq-service-critical"
+    webhook_configs:
+      - url: "http://receiver:2021/webhook/eq-service/critical"
+        send_resolved: true
+    # Uncomment and configure for Slack notifications
+    # slack_configs:
+    # - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+    #   channel: '#alerts'
+    #   title: 'CRITICAL: EQ Service Alert'
+    #   text: |
+    #     {{ range .Alerts }}
+    #     Alert: {{ .Annotations.summary }}
+    #     Description: {{ .Annotations.description }}
+    #     {{ end }}
+
+  - name: "external-deps-alerts"
+    webhook_configs:
+      - url: "http://receiver:2021/webhook/external-deps"
+        send_resolved: true
+
+  - name: "system-alerts"
+    webhook_configs:
+      - url: "http://receiver:2021/webhook/system"
+        send_resolved: true
