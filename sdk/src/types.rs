@@ -4,19 +4,24 @@ use base64::Engine;
 use celestia_types::{blob::Commitment, block::Height as BlockHeight, nmt::Namespace};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct BlobId {
     pub height: BlockHeight,
     pub namespace: Namespace,
     pub commitment: Commitment,
+    // ZKStack specific fields
+    pub l2_chain_id: u64,
+    pub batch_number: u32,
 }
 
 impl BlobId {
-    pub fn new(height: BlockHeight, namespace: Namespace, commitment: Commitment) -> Self {
+    pub fn new(height: BlockHeight, namespace: Namespace, commitment: Commitment, l2_chain_id: u64, batch_number: u32) -> Self {
         Self {
             height,
             namespace,
             commitment,
+            l2_chain_id,
+            batch_number,
         }
     }
 }
@@ -35,6 +40,8 @@ impl std::fmt::Debug for BlobId {
             .field("height", &self.height.value())
             .field("namespace", &namespace_string)
             .field("commitment", &commitment_string)
+            .field("l2_chain_id", &self.l2_chain_id)
+            .field("batch_number", &self.batch_number)
             .finish()
     }
 }
@@ -52,10 +59,12 @@ impl Display for BlobId {
             base64::engine::general_purpose::STANDARD.encode(&self.commitment.hash());
         write!(
             f,
-            "{}:{}:{}",
+            "{}:{}:{}:{}:{}",
             self.height.value(),
             &namespace_string,
-            &commitment_string
+            &commitment_string,
+            self.l2_chain_id,
+            self.batch_number
         )
     }
 }
@@ -65,7 +74,7 @@ impl FromStr for BlobId {
     type Err = Box<dyn Error>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts = s.splitn(3, ":");
+        let mut parts = s.splitn(5, ":");
 
         let height = BlockHeight::from_str(parts.next().ok_or("Height missing (u64)")?)?;
 
@@ -73,6 +82,7 @@ impl FromStr for BlobId {
             .next()
             .ok_or("Namespace missing (base64)")?
             .to_string();
+        println!("{}", &n_base64);
         let n_bytes = base64::engine::general_purpose::STANDARD.decode(n_base64)?;
         let namespace = Namespace::new_v0(&n_bytes)?;
 
@@ -86,10 +96,51 @@ impl FromStr for BlobId {
             .map_err(|_| "Commitment must be 32 bytes!")?;
         let commitment = Commitment::new(c_hash.into());
 
+        let l2_chain_id = parts
+            .next()
+            .ok_or("L2 chain ID missing (u64)")?
+            .to_string();
+        let l2_chain_id = u64::from_str(&l2_chain_id)?;
+
+        let batch_number = parts
+            .next()
+            .ok_or("Batch number missing (u32)")?
+            .to_string();
+        let batch_number = u32::from_str(&batch_number)?;
+
         Ok(Self {
             height,
             namespace,
             commitment,
+            l2_chain_id,
+            batch_number,
         })
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use base64::engine::general_purpose::STANDARD;
+
+    use super::*;
+
+    #[test]
+    fn test_blob_id_from_str() {
+        //let blob_id
+        let height: u32 = 6952283;
+        //let namespace = "736f762d6d696e692d61";
+        let namespace = "000000000000000000000000000000000000736f762d6d696e692d61";
+        let commitment = "JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=";
+        let blob_id = BlobId::new(
+            BlockHeight::from(height),
+            Namespace::new_v0(&hex::decode(namespace).unwrap()).unwrap(),
+            Commitment::new(STANDARD.decode(commitment).unwrap().try_into().unwrap()),
+            0,
+            0
+        );
+        let blob_id_to_str = blob_id.to_string();
+        let blob_id_from_str = BlobId::from_str("6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0").unwrap();
+        assert_eq!(blob_id_from_str, blob_id);
+        assert_eq!(blob_id_to_str, "6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0");
     }
 }

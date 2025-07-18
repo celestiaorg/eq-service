@@ -6,7 +6,7 @@ use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
 use celestia_types::ShareProof;
 use clap::{command, Parser};
-use eq_common::KeccakInclusionToDataRootProofInput;
+use eq_common::ZKStackEqProofInput;
 use sha3::{Digest, Keccak256};
 
 #[derive(Parser, Debug)]
@@ -24,8 +24,9 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").expect("Token not provided");
-    let client = Client::new("http://127.0.0.1:26658", Some(&node_token))
+    //let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").expect("Token not provided");
+    //let client = Client::new("http://127.0.0.1:26658", Some(&node_token))
+    let client = Client::new("https://thrilling-proud-tab.celestia-mocha.quiknode.pro/04b606059a40c8045e102afc9d5c494107cb9fc5/", None)
         .await
         .expect("Failed creating celestia rpc client");
 
@@ -80,13 +81,15 @@ async fn main() {
 
     let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
 
-    let proof_input = KeccakInclusionToDataRootProofInput {
+    let proof_input = ZKStackEqProofInput {
         data: blob.clone().data,
         namespace_id: namespace,
         share_proofs: range_response.clone().proof.share_proofs,
         row_proof: range_response.clone().proof.row_proof,
         data_root: header.dah.hash().as_bytes().try_into().unwrap(),
         keccak_hash: keccak_hash,
+        batch_number: 0,
+        chain_id: 0,
     };
 
     // create a ShareProof from the KeccakInclusionToDataRootProofInput and verify it

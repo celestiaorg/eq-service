@@ -1601,6 +1601,7 @@ dependencies = [
  "celestia-types",
  "clap",
  "eq-common",
+ "hex",
  "serde",
  "tokio",
  "tonic 0.11.0",

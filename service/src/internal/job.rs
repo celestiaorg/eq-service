@@ -1,4 +1,4 @@
-use eq_common::{InclusionServiceError, KeccakInclusionToDataRootProofInput};
+use eq_common::{InclusionServiceError, ZKStackEqProofInput};
 use eq_sdk::types::BlobId;
 use serde::{Deserialize, Serialize};
 use sp1_sdk::SP1ProofWithPublicValues;
@@ -17,7 +17,7 @@ pub enum JobStatus {
     /// DA inclusion proof data is being collected
     DataAvailabilityPending,
     /// DA inclusion is processed and ready to send to the ZK prover
-    DataAvailable(KeccakInclusionToDataRootProofInput),
+    DataAvailable(ZKStackEqProofInput),
     /// A ZK prover job had been requested, awaiting response
     ZkProofPending(SuccNetJobId),
     /// A ZK proof is ready, and the [Job] is complete
