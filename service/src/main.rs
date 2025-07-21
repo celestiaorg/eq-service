@@ -79,6 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let service = inclusion_service.clone();
         async move {
             let program_id = get_program_id().await;
+            debug!("vkey value: {}", hex::encode(&program_id));
             let zk_client = service.clone().get_zk_client_remote().await;
             debug!("ZK client prepared, acquiring setup");
             let _ = service.get_proof_setup(&program_id, zk_client).await;
