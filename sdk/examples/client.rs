@@ -22,13 +22,13 @@ struct Args {
     #[arg(short, long)]
     commitment: String,
 
-    /// L2 chain id (u64)
-    #[arg(short, long, default_value_t = 0)]
-    l2_chain_id: u64,
+    /// Layer2 ChainID, to prevent replay on other chains (u64)
+    #[arg(short, long)]
+    l2_chain_id: String,
 
-    /// Batch number (u32)
-    #[arg(short, long, default_value_t = 0)]
-    batch_number: u32,
+    /// Batch Number, to prevent replay on same chain (u32)
+    #[arg(short, long)]
+    batch_number: String,
 }
 
 #[tokio::main]
@@ -49,11 +49,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|e| format!("gRPC connect error: {e}"))?;
     let client = EqClient::new(channel);
 
-    // Reconstruct the canonical "height:namespace:commitment" string
-    let blob_str = format!(
-        "{}:{}:{}:{}:{}",
-        args.height, args.namespace, args.commitment, args.l2_chain_id, args.batch_number
-    );
+    // Reconstruct the canonical "height:namespace:commitment:l2_chain_id:batch_number" string
+    let blob_str = format!("{}:{}:{}:{}:{}", args.height, args.namespace, args.commitment, args.l2_chain_id, args.batch_number);
 
     // And hand it off to your existing BlobId::from_str impl:
     let blob_id: BlobId = blob_str.parse()?;

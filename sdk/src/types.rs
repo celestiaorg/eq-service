@@ -75,7 +75,7 @@ impl Display for BlobId {
     }
 }
 
-/// Format = "height:namespace:commitment" using u64 for height, and base64 encoding for namespace and commitment
+/// Format = "height:namespace:commitment:l2_chain_id:batch_number" using integers for height, l2_chain_id, and batch; base64 encoding for namespace and commitment
 impl FromStr for BlobId {
     type Err = Box<dyn Error>;
 

@@ -116,6 +116,12 @@ build-debug: _pre-build
 # Build in release mode, includes optimizations
 build-release: _pre-build
     cargo b -r
+    
+# Run rust tests and examples
+build-release: _pre-build
+    cargo t --workspace
+    # TODO: setup integration tests for example client
+    # cargo r -p eq-sdk --example client -- --socket <SOCKET> --height <HEIGHT> --namespace <NAMESPACE> --commitment <COMMITMENT>
 
 # Scrub build artifacts
 clean:
