@@ -52,7 +52,7 @@ impl std::fmt::Debug for BlobId {
     }
 }
 
-/// Format = "height:namespace:commitment" using u64 for height, and base64 encoding for namespace and commitment
+/// Format = "height:namespace:commitment:l2_chain_id:batch_number" using integers for height, l2_chain_id, and batch; base64 encoding for namespace and commitment
 impl Display for BlobId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let namespace_string;
@@ -129,23 +129,27 @@ mod test {
 
     #[test]
     fn test_blob_id_from_str() {
-        //let blob_id
         let height: u32 = 6952283;
-        //let namespace = "736f762d6d696e692d61";
-        let namespace = "000000000000000000000000000000000000736f762d6d696e692d61";
+        // namespace in hex = 0x000000000000000000000000000000000000736f762d6d696e692d61
+        let namespace = "c292LW1pbmktYQ==";
         let commitment = "JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=";
+        let l2_chain_id = 0u64;
+        let batch_number= 0u32;
+
         let blob_id = BlobId::new(
             BlockHeight::from(height),
-            Namespace::new_v0(&hex::decode(namespace).unwrap()).unwrap(),
+            Namespace::new_v0(STANDARD.decode(namespace).unwrap().as_slice()).unwrap(),
             Commitment::new(STANDARD.decode(commitment).unwrap().try_into().unwrap()),
-            0,
-            0,
+            l2_chain_id,
+            batch_number,
         );
+
         let blob_id_to_str = blob_id.to_string();
         let blob_id_from_str = BlobId::from_str(
             "6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0",
         )
         .unwrap();
+
         assert_eq!(blob_id_from_str, blob_id);
         assert_eq!(
             blob_id_to_str,

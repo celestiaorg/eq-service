@@ -62,7 +62,7 @@ impl ZKStackEqProofOutput {
 
     #[cfg(feature = "host")]
     pub fn from_bytes(data: &[u8]) -> Result<Self, InclusionServiceError> {
-        if data.len() != 64 {
+        if data.len() != 76 {
             return Err(InclusionServiceError::OutputDeserializationError);
         }
         let decoded = ZKStackEqProofOutput {
@@ -78,7 +78,7 @@ impl ZKStackEqProofOutput {
                     .map_err(|_| InclusionServiceError::OutputDeserializationError)?,
             ),
             chain_id: u64::from_le_bytes(
-                data[68..72]
+                data[68..76]
                     .try_into()
                     .map_err(|_| InclusionServiceError::OutputDeserializationError)?,
             ),
