@@ -24,9 +24,8 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    //let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").expect("Token not provided");
-    //let client = Client::new("http://127.0.0.1:26658", Some(&node_token))
-    let client = Client::new("https://thrilling-proud-tab.celestia-mocha.quiknode.pro/04b606059a40c8045e102afc9d5c494107cb9fc5/", None)
+    let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").expect("Token not provided");
+    let client = Client::new("http://127.0.0.1:26658", Some(&node_token))
         .await
         .expect("Failed creating celestia rpc client");
 
