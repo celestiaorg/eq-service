@@ -72,12 +72,16 @@ impl ZKStackEqProofOutput {
             data_root: data[32..64]
                 .try_into()
                 .map_err(|_| InclusionServiceError::OutputDeserializationError)?,
-            batch_number: u32::from_le_bytes(data[64..68]
-                .try_into()
-                .map_err(|_| InclusionServiceError::OutputDeserializationError)?),
-            chain_id: u64::from_le_bytes(data[68..72]
-                .try_into()
-                .map_err(|_| InclusionServiceError::OutputDeserializationError)?),
+            batch_number: u32::from_le_bytes(
+                data[64..68]
+                    .try_into()
+                    .map_err(|_| InclusionServiceError::OutputDeserializationError)?,
+            ),
+            chain_id: u64::from_le_bytes(
+                data[68..72]
+                    .try_into()
+                    .map_err(|_| InclusionServiceError::OutputDeserializationError)?,
+            ),
         };
         Ok(decoded)
     }

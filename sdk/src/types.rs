@@ -15,7 +15,13 @@ pub struct BlobId {
 }
 
 impl BlobId {
-    pub fn new(height: BlockHeight, namespace: Namespace, commitment: Commitment, l2_chain_id: u64, batch_number: u32) -> Self {
+    pub fn new(
+        height: BlockHeight,
+        namespace: Namespace,
+        commitment: Commitment,
+        l2_chain_id: u64,
+        batch_number: u32,
+    ) -> Self {
         Self {
             height,
             namespace,
@@ -96,10 +102,7 @@ impl FromStr for BlobId {
             .map_err(|_| "Commitment must be 32 bytes!")?;
         let commitment = Commitment::new(c_hash.into());
 
-        let l2_chain_id = parts
-            .next()
-            .ok_or("L2 chain ID missing (u64)")?
-            .to_string();
+        let l2_chain_id = parts.next().ok_or("L2 chain ID missing (u64)")?.to_string();
         let l2_chain_id = u64::from_str(&l2_chain_id)?;
 
         let batch_number = parts
@@ -136,11 +139,17 @@ mod test {
             Namespace::new_v0(&hex::decode(namespace).unwrap()).unwrap(),
             Commitment::new(STANDARD.decode(commitment).unwrap().try_into().unwrap()),
             0,
-            0
+            0,
         );
         let blob_id_to_str = blob_id.to_string();
-        let blob_id_from_str = BlobId::from_str("6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0").unwrap();
+        let blob_id_from_str = BlobId::from_str(
+            "6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0",
+        )
+        .unwrap();
         assert_eq!(blob_id_from_str, blob_id);
-        assert_eq!(blob_id_to_str, "6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0");
+        assert_eq!(
+            blob_id_to_str,
+            "6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0"
+        );
     }
 }
