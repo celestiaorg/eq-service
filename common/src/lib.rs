@@ -73,6 +73,22 @@ impl KeccakInclusionToDataRootProofOutput {
     }
 }
 
+pub struct PayyInclusionToDataRootProofInput {
+    pub data: Vec<u8>,
+    pub namespace_id: Namespace,
+    pub share_proofs: Vec<NamespaceProof>,
+    pub row_proof: RowProof,
+    pub data_root: [u8; 32],
+    // the ~8 UTXO hashes for a Payy block, bn254 scalar field elements represented as [u8; 32].
+    pub hashes: Vec<[u8; 32]>,
+}
+
+pub struct PayyInclusionToDataRootProofOutput {
+    pub data_root: [u8; 32],
+    // The Payy hash of the leaves, a bn254 scalar field element represented as [u8; 32].
+    pub payy_commitment: [u8; 32],
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
