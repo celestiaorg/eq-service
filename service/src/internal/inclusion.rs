@@ -413,6 +413,12 @@ impl InclusionService {
                 job_status =
                     JobStatus::Failed(e.clone(), Some(JobStatus::DataAvailabilityPending.into()));
             }
+            SP1NetworkError::RequestAuctionTimedOut { request_id } => {
+                e = InclusionServiceError::ZkClientError(format!(
+                    "ZKP network: {zk_client_error} occurred for {job:?} - callback to start the job over, request_id: {request_id:?}"
+                ));
+                job_status = JobStatus::Failed(e.clone(), None);
+            }
         }
         match self.finalize_job(job_key, job_status) {
             Ok(_) => e,
@@ -468,7 +474,7 @@ impl InclusionService {
         let zk_client_handle = self.get_zk_client_remote().await;
 
         let proof = zk_client_handle
-            .wait_proof(request_id.into(), None)
+            .wait_proof(request_id.into(), None, None)
             .await
             .map_err(|e| {
                 if let Some(down) = e.downcast_ref::<SP1NetworkError>() {

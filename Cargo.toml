@@ -23,11 +23,11 @@ eq-common = { path = "common", version = "0.1.10" }
 eq-sdk = { path = "sdk", version = "0.1.10" }
 
 clap = "4.5"
-celestia-types = "0.12"
+celestia-types = "0.13"
 celestia-rpc = "0.11"
 nmt-rs = "0.2"
-sp1-zkvm = { version = "5.0", features = ["verify"] }
-sp1-sdk = { version = "5.0" }
+sp1-zkvm = { version = "5.1", features = ["verify"] }
+sp1-sdk = { version = "5.1" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 sha3 = "0.10"
 tendermint-proto = "0.40"
