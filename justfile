@@ -75,7 +75,7 @@ run-debug *FLAGS: _pre-build _pre-run
         exit 1
     fi
     if ! echo "ping" | websocat $CELESTIA_NODE_HTTP -1 -E &> /dev/null ; then
-        echo -e "⛔ Node not avalible @ $CELESTIA_NODE_HTTP - start a mocha one locally with 'just mocha' "
+        echo -e "⛔ Node not available @ $CELESTIA_NODE_HTTP - start a mocha one locally with 'just mocha' "
         exit 1
     fi
 
