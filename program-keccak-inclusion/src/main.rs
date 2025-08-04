@@ -14,7 +14,7 @@ pub fn main() {
 
     println!("cycle-tracker-start: create blob");
     let blob =
-        Blob::new(input.namespace_id, input.data, AppVersion::V3).expect("Failed creating blob");
+        Blob::new(input.namespace_id, input.data, AppVersion::V5).expect("Failed creating blob");
     println!("cycle-tracker-end: create blob");
 
     println!("cycle-tracker-start: compute keccak hash");
