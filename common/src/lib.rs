@@ -3,6 +3,7 @@ use celestia_types::{
     RowProof,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, Bytes};
 
 #[cfg(feature = "host")]
 mod error;
@@ -20,22 +21,19 @@ pub mod eqs {
     These are used for Celestia integrations with Matter Labs' ZKStack
     TODO: Add support for Payy Celestia integration
 */
+#[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ZKStackEqProofInput {
-    #[serde(rename = "blob_data")]
-    pub data: Vec<u8>,
-
-    #[serde(rename = "blob_namespace")]
-    pub namespace_id: Namespace,
-
-    #[serde(rename = "nmt_multiproofs")]
-    pub share_proofs: Vec<NamespaceProof>,
-
-    #[serde(rename = "row_root_multiproof")]
-    pub row_proof: RowProof,
-
-    pub data_root: [u8; 32],   // already matches
-    pub keccak_hash: [u8; 32], // already matches
+    /// Celestia App version
+    pub app_version: u64,
+    pub blob_data: Vec<u8>,
+    pub blob_namespace: Namespace,
+    pub nmt_multiproofs: Vec<NamespaceProof>,
+    pub row_root_multiproof: RowProof,
+    #[serde_as (as = "Bytes")]
+    pub data_root: [u8; 32],
+    #[serde_as (as = "Bytes")]
+    pub keccak_hash: [u8; 32],
     // batch_number and chain_id are passed through to prevent proofs from being replayed
     pub batch_number: u32,
     pub chain_id: u64,

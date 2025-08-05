@@ -11,6 +11,7 @@ documentation = "https://docs.rs/eq-common"
 [dependencies]
 celestia-types = { workspace = true }
 serde = { workspace = true }
+serde_with = { workspace = true }
 thiserror = { workspace = true }
 prost = { workspace = true, optional = true }
 tonic = { workspace = true, features = ["codegen", "prost"], optional = true }

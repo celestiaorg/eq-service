@@ -251,6 +251,13 @@ impl InclusionService {
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
+        let app_version = client
+            .header_get_by_height(job.height.into())
+            .await
+            .map_err(|e| self.handle_da_client_error(e, job, job_key))?
+            .app_version()
+            .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
+
         let blob_index = blob
             .index
             .ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
@@ -275,10 +282,11 @@ impl InclusionService {
 
         debug!("Creating ZK Proof input from Celestia Data");
         let proof_input = ZKStackEqProofInput {
-            data: blob.data,
-            namespace_id: job.namespace,
-            share_proofs: range_response.proof.share_proofs,
-            row_proof: range_response.proof.row_proof,
+            app_version: app_version.as_u64(),
+            blob_data: blob.data,
+            blob_namespace: job.namespace,
+            nmt_multiproofs: range_response.proof.share_proofs,
+            row_root_multiproof: range_response.proof.row_proof,
             data_root: header.dah.hash().as_bytes().try_into().map_err(|_| {
                 InclusionServiceError::InternalError(
                     "Failed to convert header.dah.hash().as_bytes() to [u8; 32]".to_string(),

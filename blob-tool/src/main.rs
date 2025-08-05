@@ -29,10 +29,12 @@ async fn main() {
         .await
         .expect("Failed creating celestia rpc client");
 
+    println!("getting header for block {} ...", args.height);
     let header = client
         .header_get_by_height(args.height)
         .await
         .expect("Failed getting header");
+    let app_version = header.app_version().unwrap();
 
     let eds_row_roots = header.dah.row_roots();
     let eds_size: u64 = eds_row_roots.len().try_into().unwrap();
@@ -81,12 +83,13 @@ async fn main() {
     let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
 
     let proof_input = ZKStackEqProofInput {
-        data: blob.clone().data,
-        namespace_id: namespace,
-        share_proofs: range_response.clone().proof.share_proofs,
-        row_proof: range_response.clone().proof.row_proof,
+        app_version: app_version.as_u64(),
+        blob_data: blob.clone().data,
+        blob_namespace: namespace,
+        nmt_multiproofs: range_response.clone().proof.share_proofs,
+        row_root_multiproof: range_response.clone().proof.row_proof,
         data_root: header.dah.hash().as_bytes().try_into().unwrap(),
-        keccak_hash: keccak_hash,
+        keccak_hash,
         batch_number: 0,
         chain_id: 0,
     };
@@ -100,8 +103,8 @@ async fn main() {
             .map(|share| share.as_ref().try_into().unwrap())
             .collect(),
         namespace_id: namespace,
-        share_proofs: proof_input.clone().share_proofs,
-        row_proof: proof_input.clone().row_proof,
+        share_proofs: proof_input.clone().nmt_multiproofs,
+        row_proof: proof_input.clone().row_root_multiproof,
     };
 
     share_proof

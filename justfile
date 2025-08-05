@@ -3,6 +3,8 @@ default:
 
 alias e := run-examples
 alias r := run-debug
+alias gb := get-blob-input
+alias gk := get-keccack-input
 alias rr := run-release
 alias db := docker-build
 alias dr := docker-run
@@ -40,7 +42,8 @@ _pre-build:
         exit 1
     fi
     if ! {{ path_exists(zkvm-elf-path) }}; then
-        cargo prove build -p eq-program-keccak-inclusion
+        cd program-keccak-inclusion
+        cargo prove build
     fi
 
 _pre-run:
@@ -55,6 +58,7 @@ run-examples *FLAGS: _pre-build _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
     source {{ env-settings }}
+    cargo t --workspace
     cargo run -p eq-sdk --example client -- {{ FLAGS }}
 
 # Run in release mode, with optimizations AND debug logs
@@ -116,12 +120,6 @@ build-debug: _pre-build
 # Build in release mode, includes optimizations
 build-release: _pre-build
     cargo b -r
-    
-# Run rust tests and examples
-build-release: _pre-build
-    cargo t --workspace
-    # TODO: setup integration tests for example client
-    # cargo r -p eq-sdk --example client -- --socket <SOCKET> --height <HEIGHT> --namespace <NAMESPACE> --commitment <COMMITMENT>
 
 # Scrub build artifacts
 clean:
@@ -147,3 +145,15 @@ mocha:
 # Setup and print to stdout, needs to be set in env to be picked up by eq-service
 mocha-local-auth:
     celestia light auth admin --p2p.network mocha
+
+# Run the blob-tool program to generate proof_input.json
+get-blob-input:
+    #!/usr/bin/env bash
+    set -a       # Automatically export all variables sourced next
+    source ./.env  # Source the .env file (variables now exported)
+    set +a       # Stop automatically exporting variables
+    cargo r -p blob-tool -- --height 7459012 --namespace "736f762d6d696e692d64" --commitment "UO0o/fdzhobbekE/HyYAH6FK5jGkdpSMHyxeclQHvWc="
+
+# Run the runner-keccak-input program with get-blob-input' output
+get-keccack-input:
+    RUST_LOG=info cargo r -p runner-keccak-inclusion -- -i proof_input.json

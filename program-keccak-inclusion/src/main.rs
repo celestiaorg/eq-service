@@ -2,24 +2,28 @@
 #![no_main]
 
 sp1_zkvm::entrypoint!(main);
-use celestia_types::{blob::Blob, hash::Hash, AppVersion, ShareProof};
+use celestia_types::{AppVersion, Blob, ShareProof};
 use eq_common::{ZKStackEqProofInput, ZKStackEqProofOutput};
-use sha3::{Digest, Keccak256};
+use sha2::{Digest, Sha256};
+use sha3::Keccak256;
 
 pub fn main() {
     println!("cycle-tracker-start: deserialize input");
     let input: ZKStackEqProofInput = sp1_zkvm::io::read();
-    let data_root_as_hash = Hash::Sha256(input.data_root);
+    let data_root_as_hash: [u8; 32] = Sha256::digest(input.data_root).into();
     println!("cycle-tracker-end: deserialize input");
 
     println!("cycle-tracker-start: create blob");
-    let blob =
-        Blob::new(input.namespace_id, input.data, AppVersion::V5).expect("Failed creating blob");
+    let blob = Blob::new(
+        input.blob_namespace,
+        input.blob_data,
+        AppVersion::from_u64(input.app_version).unwrap(),
+    )
+    .expect("Failed creating blob");
     println!("cycle-tracker-end: create blob");
 
     println!("cycle-tracker-start: compute keccak hash");
-    let computed_keccak_hash: [u8; 32] =
-        Keccak256::new().chain_update(&blob.data).finalize().into();
+    let computed_keccak_hash: [u8; 32] = Keccak256::digest(&blob.data).into();
     println!("cycle-tracker-end: compute keccak hash");
 
     println!("cycle-tracker-start: convert blob to shares");
@@ -30,14 +34,14 @@ pub fn main() {
             .into_iter()
             .map(|share| share.as_ref().try_into().unwrap())
             .collect(),
-        namespace_id: input.namespace_id,
-        share_proofs: input.share_proofs,
-        row_proof: input.row_proof,
+        namespace_id: input.blob_namespace,
+        share_proofs: input.nmt_multiproofs,
+        row_proof: input.row_root_multiproof,
     };
     println!("cycle-tracker-end: convert blob to shares");
 
     println!("cycle-tracker-start: verify proof");
-    rp.verify(data_root_as_hash)
+    rp.verify(data_root_as_hash.to_vec().try_into().unwrap())
         .expect("Failed verifying proof");
     println!("cycle-tracker-end: verify proof");
 
