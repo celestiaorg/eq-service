@@ -11,6 +11,11 @@ You must run a local Celestia Node, hardcoded to use `ws://localhost:26658` to c
 ## Usage
 
 ```sh
+# set CELESTIA_NODE_AUTH_TOKEN env variable
+set -a       # Automatically export all variables sourced next
+source ../.env  # Source the .env file (variables now exported)
+set +a       # Stop automatically exporting variables
+
 # Choose a network & transaction from an explorer like Celenium.io
 # Mainnet: https://celenium.io/
 # Tesetnet: https://mocha-4.celenium.io/
@@ -23,5 +28,9 @@ cargo r -- --height 5967025 --namespace "c27fc4694d31d1" --commitment "Y+8haW3Hi
 # Known working example from the Mocha Testnet (~0.125MB):
 # https://mocha-4.celenium.io/tx/a54e3b86dc095180ecda631e67e25ef9d8450dc1de5bd2af4dc2cfa50b4b3ac4
 cargo r -- --height 6062832 --namespace "5d251311f25b13a549e0" --commitment "JPqS2PmVBNdyo8IadhIgIzvgbV99LQido2LAEaCp+vY="
+
+# Known working example from the Mocha Testnet (~1MB):
+# https://mocha.celenium.io/tx/7c182a01d9beee329023781743d8b9633e988802056d58cd9499dc9d8e164433?tab=messages
+cargo r -- --height 7459012 --namespace "736f762d6d696e692d64" --commitment "UO0o/fdzhobbekE/HyYAH6FK5jGkdpSMHyxeclQHvWc="
 
 ```

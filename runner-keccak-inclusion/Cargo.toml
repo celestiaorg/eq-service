@@ -11,3 +11,4 @@ publish = false
 sp1-sdk.workspace = true
 eq-common.workspace = true
 serde_json.workspace = true
+clap.workspace = true
