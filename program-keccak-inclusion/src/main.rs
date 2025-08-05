@@ -2,15 +2,14 @@
 #![no_main]
 
 sp1_zkvm::entrypoint!(main);
-use celestia_types::{AppVersion, Blob, ShareProof};
+use celestia_types::{hash::Hash, AppVersion, Blob, ShareProof};
 use eq_common::{ZKStackEqProofInput, ZKStackEqProofOutput};
-use sha2::{Digest, Sha256};
-use sha3::Keccak256;
+use sha3::{Digest, Keccak256};
 
 pub fn main() {
     println!("cycle-tracker-start: deserialize input");
     let input: ZKStackEqProofInput = sp1_zkvm::io::read();
-    let data_root_as_hash: [u8; 32] = Sha256::digest(input.data_root).into();
+    let data_root_as_hash = Hash::Sha256(input.data_root);
     println!("cycle-tracker-end: deserialize input");
 
     println!("cycle-tracker-start: create blob");
@@ -41,7 +40,7 @@ pub fn main() {
     println!("cycle-tracker-end: convert blob to shares");
 
     println!("cycle-tracker-start: verify proof");
-    rp.verify(data_root_as_hash.to_vec().try_into().unwrap())
+    rp.verify(data_root_as_hash)
         .expect("Failed verifying proof");
     println!("cycle-tracker-end: verify proof");
 

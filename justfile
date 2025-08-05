@@ -4,7 +4,7 @@ default:
 alias e := run-examples
 alias r := run-debug
 alias gb := get-blob-input
-alias gk := get-keccack-input
+alias rk := run-keccack-mock
 alias rr := run-release
 alias db := docker-build
 alias dr := docker-run
@@ -154,6 +154,6 @@ get-blob-input:
     set +a       # Stop automatically exporting variables
     cargo r -p blob-tool -- --height 7459012 --namespace "736f762d6d696e692d64" --commitment "UO0o/fdzhobbekE/HyYAH6FK5jGkdpSMHyxeclQHvWc="
 
-# Run the runner-keccak-input program with get-blob-input' output
-get-keccack-input:
+# Run the runner-keccak-input program with get-blob-input's output to see cycle counts
+run-keccack-mock:
     RUST_LOG=info cargo r -p runner-keccak-inclusion -- -i proof_input.json

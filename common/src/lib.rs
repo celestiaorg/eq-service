@@ -30,9 +30,9 @@ pub struct ZKStackEqProofInput {
     pub blob_namespace: Namespace,
     pub nmt_multiproofs: Vec<NamespaceProof>,
     pub row_root_multiproof: RowProof,
-    #[serde_as (as = "Bytes")]
+    #[serde_as(as = "Bytes")]
     pub data_root: [u8; 32],
-    #[serde_as (as = "Bytes")]
+    #[serde_as(as = "Bytes")]
     pub keccak_hash: [u8; 32],
     // batch_number and chain_id are passed through to prevent proofs from being replayed
     pub batch_number: u32,
