@@ -45,7 +45,7 @@ The service **_requires_** a connection to:
    - Fetch blob data.
    - Get headers.
    - Retrieve Merkle tree proofs for blobs.
-1. [Succinct's prover network](https://docs.succinct.xyz/docs/sp1/generating-proofs/prover-network) as a provider to generate Zero-Knowledge Proofs (ZKPs) of data existing on Celestia.
+1. [Succinct's prover network](https://docs.succinct.xyz/docs/sp1/prover-network/quickstart) as a provider to generate Zero-Knowledge Proofs (ZKPs) of data existing on Celestia.
    _See the [ZKP program](./program-keccak-inclusion/src/main.rs) for details on what is proven._
 
 ## Interact
