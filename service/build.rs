@@ -14,5 +14,5 @@ fn main() {
         ..Default::default()
     };
 
-    build_program_with_args("./program-keccak-inclusion", args);
+    build_program_with_args("../program-keccak-inclusion", args);
 }
