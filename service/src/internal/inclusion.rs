@@ -2,7 +2,8 @@ use crate::internal::prom_metrics::PromMetrics;
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
-use eq_common::{ErrorLabels, InclusionServiceError, RawShare, ZKStackEqProofInput};
+use celestia_types::Share;
+use eq_common::{ErrorLabels, InclusionServiceError, ZKStackEqProofInput};
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
 use sha3::Keccak256;
@@ -251,18 +252,11 @@ impl InclusionService {
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
-        let shares_data: Vec<RawShare> = blob
-            .to_shares()
-            .map_err(|_| {
-                InclusionServiceError::InternalError("Failed to convert blob to shares".to_string())
-            })?
-            .iter()
-            .map(|s| s.to_owned().into())
-            .collect();
+        let shares_data: Vec<Share> = blob.to_shares().map_err(|_| {
+            InclusionServiceError::InternalError("Failed to convert blob to shares".to_string())
+        })?;
 
-        let blob_index = blob
-            .index
-            .ok_or(InclusionServiceError::MissingBlobIndex)?;
+        let blob_index = blob.index.ok_or(InclusionServiceError::MissingBlobIndex)?;
 
         // https://github.com/celestiaorg/eq-service/issues/65
         //let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
@@ -284,17 +278,12 @@ impl InclusionService {
 
         debug!("Creating ZK Proof input from Celestia Data");
         let proof_input = ZKStackEqProofInput {
-            blob_data: blob.data,
-            shares_data,
-            blob_namespace: job.namespace,
-            nmt_multiproofs: range_response.proof.share_proofs,
-            row_root_multiproof: range_response.proof.row_proof,
+            share_proof: todo!(),
             data_root: header.dah.hash().as_bytes().try_into().map_err(|_| {
                 InclusionServiceError::InternalError(
                     "Failed to convert header.dah.hash().as_bytes() to [u8; 32]".to_string(),
                 )
             })?,
-            keccak_hash,
             batch_number: job.batch_number,
             chain_id: job.l2_chain_id,
         };

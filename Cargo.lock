@@ -1435,6 +1435,7 @@ dependencies = [
 name = "blob-tool"
 version = "0.1.11"
 dependencies = [
+ "anyhow",
  "base64 0.22.1",
  "celestia-rpc",
  "celestia-types",
@@ -2520,6 +2521,7 @@ dependencies = [
  "prometheus-client",
  "prost 0.12.6",
  "serde",
+ "sha3",
  "thiserror 2.0.12",
  "tonic 0.11.0",
  "tonic-build",
