@@ -2,11 +2,10 @@ use crate::internal::prom_metrics::PromMetrics;
 use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
-use celestia_types::Share;
+use celestia_types::ShareProof;
 use eq_common::{ErrorLabels, InclusionServiceError, ZKStackEqProofInput};
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
-use sha3::Keccak256;
 use sha3::{Digest, Sha3_256};
 use sled::{Transactional, Tree as SledTree};
 use sp1_sdk::{
@@ -232,53 +231,48 @@ impl InclusionService {
         job_key: &[u8],
         client: Arc<CelestiaJSONClient>,
     ) -> Result<(), InclusionServiceError> {
-        debug!("Preparing request to Celestia");
-
+        debug!("Pulling header, blob, and shares from Celestia");
         let header = client
             .header_get_by_height(job.height.into())
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
-
-        let eds_row_roots = header.dah.row_roots();
-        let eds_size: u64 = eds_row_roots.len().try_into().map_err(|_| {
-            InclusionServiceError::InternalError(
-                "Failed to convert eds_row_roots.len() to u64".to_string(),
-            )
-        })?;
-        let ods_size: u64 = eds_size / 2;
 
         let blob = client
             .blob_get(job.height.into(), job.namespace, job.commitment)
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
-        let shares_data: Vec<Share> = blob.to_shares().map_err(|_| {
-            InclusionServiceError::InternalError("Failed to convert blob to shares".to_string())
-        })?;
+        // Compute sizes & indices
+        let eds_size = header.dah.row_roots().len() as u64;
+        let ods_size = eds_size / 2;
+        let idx = blob.index.ok_or("Blob index missing").expect("blob index");
+        let first_row = idx / eds_size;
+        let ods_index = idx - first_row * ods_size;
 
-        let blob_index = blob.index.ok_or(InclusionServiceError::MissingBlobIndex)?;
-
-        // https://github.com/celestiaorg/eq-service/issues/65
-        //let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
-        let first_row_index: u64 =
-            blob.index.ok_or(InclusionServiceError::MissingBlobIndex)? / eds_size;
-        let ods_index = blob_index - (first_row_index * ods_size);
-
-        let range_response = client
+        let range = client
             .share_get_range(&header, ods_index, ods_index + blob.shares_len() as u64)
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
-        range_response
-            .proof
+        let share_proof = ShareProof {
+            data: blob
+                .to_shares()
+                .map_err(|e| InclusionServiceError::ShareConversionError(format!("{e}")))?
+                .iter()
+                .map(|s| *s.data())
+                .collect(),
+            namespace_id: blob.namespace,
+            share_proofs: range.proof.share_proofs.clone(),
+            row_proof: range.proof.row_proof.clone(),
+        };
+
+        share_proof
             .verify(header.dah.hash())
             .map_err(|_| InclusionServiceError::FailedShareRangeProofSanityCheck)?;
 
-        let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
-
         debug!("Creating ZK Proof input from Celestia Data");
         let proof_input = ZKStackEqProofInput {
-            share_proof: todo!(),
+            share_proof,
             data_root: header.dah.hash().as_bytes().try_into().map_err(|_| {
                 InclusionServiceError::InternalError(
                     "Failed to convert header.dah.hash().as_bytes() to [u8; 32]".to_string(),

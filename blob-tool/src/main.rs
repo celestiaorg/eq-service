@@ -40,25 +40,25 @@ async fn main() -> anyhow::Result<()> {
     let first_row = idx / eds_size;
     let ods_index = idx - first_row * ods_size;
 
-    // Fetch & verify the inclusion proof
+    // Fetch inclusion proof
     let range = client
         .share_get_range(&header, ods_index, ods_index + blob.shares_len() as u64)
         .await?;
-    range.proof.verify(header.dah.hash())?;
 
     // Build the ShareProof
     let share_proof = ShareProof {
         data: blob
             .to_shares()?
-            .into_iter()
-            .map(|s| s.as_ref().try_into().unwrap())
+            .iter()
+            // .map(|s| s.as_ref().try_into().map_err(|e| InclusionServiceError::ShareConversionError(format!("{e}"))))?
+            .map(|s| *s.data())
             .collect(),
         namespace_id: namespace,
         share_proofs: range.proof.share_proofs.clone(),
         row_proof: range.proof.row_proof.clone(),
     };
 
-    // Do a sanity check
+    // Sanity Check inclusion proof
     share_proof.verify(header.dah.hash())?;
 
     let proof_input = ZKStackEqProofInput {

@@ -70,34 +70,34 @@ export EQ_PROTO_DIR="."
 # Fetching the Keccak inclusion proof for a specific Celestia commitment, namespace, and height
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{height": <block height (integer)>", "namespace": "<your_namespace_hex>", commitment": "<your_commitment_hex>"}'
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetZKStack
 
 # Working examples using Celestia's mocha network
 
 # https://mocha.celenium.io/tx/e064ae79e06150ae75b37d3604c015d5698e173c52d0c2e3bf3203fe708e7513?tab=messages
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{"height": 4214864, "namespace": "3q2+796tvu8=", "commitment":"YcARQRj9KE/7sSXd4090FAONKkPz9ajYKIZq8liv3A0="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetZKStack
 
 # https://mocha.celenium.io/tx/c3c301fe579feb908fe02e2e8549c38f23707d30a3d4aa73e26402d854ff9104
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{"height": 4409088, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"DYoAZpU7FrviV7Ui/AjQv0BpxCwexPWaOW/hQVpEl/s="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetZKStack
 
 # https://mocha.celenium.io/tx/6ead3f794b384a9f41f58e62be4d58822626add607eefcb7ab9f0dd6b70a6abe
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{"height": 4499000, "namespace": "EV1P7ciRW7PodQ==", "commitment":"mV9udfLnkNqmG/3khk2/gH0wLPx/6RinVDCTV77X3Xw="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetZKStack
 
 # https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{"height": 4499999, "namespace": "Ucwac9Zflfa95g==", "commitment":"S2iIifIPdAjQ33KPeyfAga26FSF3IL11WsCGtJKSOTA="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetZKStack
 
 # https://mocha.celenium.io/tx/36797fdd1faa19ef8df1a3d3ec1b0278eb784b0a8cc3d5cd94db10b254f3eb78
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{"height": 6692080, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"iu5d9b+rtl5B/j2ju3hUqbJT0y/kcUV4gHUdCvU2Jn4="}' \
-  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetZKStack
 ```
 
 ## Operate
