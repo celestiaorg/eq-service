@@ -35,15 +35,20 @@ initial-config-installs:
         echo -e "✅ cargo-prove installed\n     ⚠️👀NOTE: Check you have the correct version needed for this project!"
     fi
 
-_pre-build:
+# Build only the zkVM ELF program in release mode (optimized)
+build-elf:
     #!/usr/bin/env bash
     if ! {{ path_exists(cargo-prove-path) }}; then
-        echo -e "⛔ Missing zkVM Compiler.\nRun `just initial-config-installs` to prepare your environment"
+        echo -e "⛔ Missing zkVM Compiler.\nRun \`just initial-config-installs\` to prepare your environment"
         exit 1
     fi
+    source {{ env-settings }}; 
     if ! {{ path_exists(zkvm-elf-path) }}; then
+        echo -e "Can't find ELF at \`$ZK_PROGRAM_ELF_PATH\`.\nAttempting to build it..."
         cd program-keccak-inclusion
-        cargo prove build
+        RUSTFLAGS="-Copt-level=3 -Clto=fat -Ccodegen-units=1 -Cdebuginfo=1 -Cembed-bitcode=yes" cargo prove build
+    else
+        echo "✅ RELEASE - ELF Exists, skipping SP1 build"
     fi
 
 _pre-run:
@@ -54,7 +59,7 @@ _pre-run:
     fi
 
 # Run examples
-run-examples *FLAGS: _pre-build _pre-run
+run-examples *FLAGS: build-elf _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
     source {{ env-settings }}
@@ -62,14 +67,14 @@ run-examples *FLAGS: _pre-build _pre-run
     cargo run -p eq-sdk --example client -- {{ FLAGS }}
 
 # Run in release mode, with optimizations AND debug logs
-run-release *FLAGS: _pre-build _pre-run
+run-release *FLAGS: build-elf _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
     source {{ env-settings }}
     RUST_LOG=eq_service=debug cargo r -r -- {{ FLAGS }}
 
 # Run in debug mode, with extra pre-checks, no optimizations
-run-debug *FLAGS: _pre-build _pre-run
+run-debug *FLAGS: build-elf _pre-run
     #!/usr/bin/env bash
     set -a  # Auto export vars
     source {{ env-settings }}
@@ -114,11 +119,11 @@ podman-run:
     podman run --rm -it -v $EQ_DB_PATH:$EQ_DB_PATH --env-file {{ env-settings }} --env RUST_LOG=eq_service=debug --network=host -p $EQ_PORT:$EQ_PORT eq-service
 
 # Build in debug mode, no optimizations
-build-debug: _pre-build
+build-debug: build-elf
     cargo b
 
 # Build in release mode, includes optimizations
-build-release: _pre-build
+build-release: build-elf
     cargo b -r
 
 # Scrub build artifacts
@@ -152,9 +157,9 @@ get-blob-input:
     set -a       # Automatically export all variables sourced next
     source ./.env  # Source the .env file (variables now exported)
     set +a       # Stop automatically exporting variables
-    cargo r -p blob-tool -- --height 7459012 --namespace "736f762d6d696e692d64" --commitment "UO0o/fdzhobbekE/HyYAH6FK5jGkdpSMHyxeclQHvWc="
-    # cargo r -p blob-tool -- --height 7501765 --namespace "a0fc6c7568eb2756a483" --commitment "Cytx86AUkY/HPVeVkiKbkIJpsdWXvkCvluqUtidVDE0="
+    # cargo r -p blob-tool -- --height 7459012 --namespace "736f762d6d696e692d64" --commitment "UO0o/fdzhobbekE/HyYAH6FK5jGkdpSMHyxeclQHvWc="
+    cargo r -p blob-tool -- --height 7501765 --namespace "a0fc6c7568eb2756a483" --commitment "Cytx86AUkY/HPVeVkiKbkIJpsdWXvkCvluqUtidVDE0="
 
 # Run the runner-keccak-input program with get-blob-input's output to see cycle counts
-run-keccack-mock: _pre-build
+run-keccack-mock: build-elf
     RUST_LOG=info cargo r -p runner-keccak-inclusion -- -i proof_input.json
