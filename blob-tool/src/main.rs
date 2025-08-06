@@ -34,7 +34,6 @@ async fn main() {
         .header_get_by_height(args.height)
         .await
         .expect("Failed getting header");
-    let app_version = header.app_version().unwrap();
 
     let eds_row_roots = header.dah.row_roots();
     let eds_size: u64 = eds_row_roots.len().try_into().unwrap();
@@ -91,7 +90,6 @@ async fn main() {
     let keccak_hash: [u8; 32] = Keccak256::new().chain_update(&blob.data).finalize().into();
 
     let proof_input = ZKStackEqProofInput {
-        app_version: app_version.as_u64(),
         blob_data: blob.clone().data,
         shares_data: shares_data.clone(),
         blob_namespace: namespace,

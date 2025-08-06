@@ -260,13 +260,6 @@ impl InclusionService {
             .map(|s| s.to_owned().into())
             .collect();
 
-        let app_version = client
-            .header_get_by_height(job.height.into())
-            .await
-            .map_err(|e| self.handle_da_client_error(e, job, job_key))?
-            .app_version()
-            .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
-
         let blob_index = blob
             .index
             .ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
@@ -291,7 +284,6 @@ impl InclusionService {
 
         debug!("Creating ZK Proof input from Celestia Data");
         let proof_input = ZKStackEqProofInput {
-            app_version: app_version.as_u64(),
             blob_data: blob.data,
             shares_data,
             blob_namespace: job.namespace,

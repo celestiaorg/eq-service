@@ -61,8 +61,6 @@ impl<'de> Deserialize<'de> for RawShare {
 */
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ZKStackEqProofInput {
-    /// Celestia App version
-    pub app_version: u64,
     pub blob_data: Vec<u8>,
     pub shares_data: Vec<RawShare>,
     pub blob_namespace: Namespace,
