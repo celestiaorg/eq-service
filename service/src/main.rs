@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let service = inclusion_service.clone();
         async move {
             let program_id = get_program_id().await;
-            info!("zkstack-inclusion program id: {}", hex::encode(&program_id));
+            info!("zkstack-inclusion program id: {}", hex::encode(program_id));
             let zk_client = service.clone().get_zk_client_remote().await;
             debug!("ZK client prepared, acquiring setup");
             let _ = service.get_proof_setup(&program_id, zk_client).await;
@@ -128,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 | JobStatus::ZkProofPending(_) => {
                     let _ = job_sender
                         .send(Some(job))
-                        .map_err(|e| error!("Failed to send existing job to worker: {}", e));
+                        .map_err(|e| error!("Failed to send existing job to worker: {e}"));
                 }
                 _ => {
                     error!("Unexpected job in queue! DB is in invalid state!")

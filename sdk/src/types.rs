@@ -134,7 +134,7 @@ mod test {
         let namespace = "c292LW1pbmktYQ==";
         let commitment = "JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=";
         let l2_chain_id = 0u64;
-        let batch_number= 0u32;
+        let batch_number = 0u32;
 
         let blob_id = BlobId::new(
             BlockHeight::from(height),

@@ -1,8 +1,12 @@
 use celestia_types::{
-    nmt::{Namespace, NamespaceProof},
-    RowProof,
+    consts::appconsts::{
+        CONTINUATION_SPARSE_SHARE_CONTENT_SIZE, FIRST_SPARSE_SHARE_CONTENT_SIZE, NAMESPACE_SIZE,
+        SEQUENCE_LEN_BYTES, SHARE_INFO_BYTES, SHARE_SIZE, SIGNER_SIZE,
+    },
+    ShareProof,
 };
 use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
 
 #[cfg(feature = "host")]
 mod error;
@@ -22,33 +26,19 @@ pub mod eqs {
 */
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ZKStackEqProofInput {
-    #[serde(rename = "blob_data")]
-    pub data: Vec<u8>,
-
-    #[serde(rename = "blob_namespace")]
-    pub namespace_id: Namespace,
-
-    #[serde(rename = "nmt_multiproofs")]
-    pub share_proofs: Vec<NamespaceProof>,
-
-    #[serde(rename = "row_root_multiproof")]
-    pub row_proof: RowProof,
-
-    pub data_root: [u8; 32],   // already matches
-    pub keccak_hash: [u8; 32], // already matches
-    // batch_number and chain_id are passed through to prevent proofs from being replayed
+    pub share_proof: ShareProof,
+    pub data_root: [u8; 32],
     pub batch_number: u32,
     pub chain_id: u64,
 }
 
-/// Expecting bytes:
-/// (keccak_hash: [u8; 32], pub data_root: [u8; 32])
 pub struct ZKStackEqProofOutput {
     pub keccak_hash: [u8; 32],
     pub data_root: [u8; 32],
     pub batch_number: u32,
     pub chain_id: u64,
 }
+
 impl ZKStackEqProofOutput {
     // Simple encoding, rather than use any Ethereum libraries
     pub fn to_vec(&self) -> Vec<u8> {
@@ -85,6 +75,50 @@ impl ZKStackEqProofOutput {
         };
         Ok(decoded)
     }
+}
+
+/// Computes Keccak‐256 over the reconstructed blob bytes by streaming
+/// payload portions of each share, skipping headers and, for version 1, the signer.
+/// Supports share versions 0 and 1; panics on unknown versions.
+///
+/// See: https://celestiaorg.github.io/celestia-app/shares.html#share-version
+pub fn compute_blob_keccak(raw_shares: Vec<[u8; SHARE_SIZE]>) -> [u8; 32] {
+    let mut hasher = Keccak256::new();
+    let mut iter = raw_shares.iter();
+
+    if let Some(first_share) = iter.next() {
+        let bytes = first_share.as_ref();
+        let info_offset = NAMESPACE_SIZE;
+        let info = bytes[info_offset];
+        let version = info >> 1;
+
+        let mut offset = info_offset + SHARE_INFO_BYTES + SEQUENCE_LEN_BYTES;
+        if version == 1 {
+            offset += SIGNER_SIZE;
+        }
+
+        let content_len = FIRST_SPARSE_SHARE_CONTENT_SIZE;
+
+        match version {
+            0 | 1 => hasher.update(&bytes[offset..offset + content_len]),
+            other => panic!("unsupported share version {} in first share", other),
+        }
+    }
+
+    for share in iter {
+        let bytes = share.as_ref();
+        let info = bytes[NAMESPACE_SIZE];
+        let version = info >> 1; // same logic for share version
+        let offset = NAMESPACE_SIZE + SHARE_INFO_BYTES;
+        let content_len = CONTINUATION_SPARSE_SHARE_CONTENT_SIZE;
+
+        match version {
+            0 | 1 => hasher.update(&bytes[offset..offset + content_len]),
+            other => panic!("unsupported share version {} in continuation share", other),
+        };
+    }
+
+    hasher.finalize().into()
 }
 
 #[cfg(test)]

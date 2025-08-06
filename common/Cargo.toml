@@ -12,6 +12,7 @@ documentation = "https://docs.rs/eq-common"
 celestia-types = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
+sha3 = { workspace = true }
 prost = { workspace = true, optional = true }
 tonic = { workspace = true, features = ["codegen", "prost"], optional = true }
 prometheus-client = { workspace = true, optional = true }
@@ -22,5 +23,5 @@ tonic-build = { workspace = true, features = ["prost"], optional = true }
 [features]
 default = ["grpc", "host"]
 
-grpc = ["tonic", "prost", "tonic-build"] 
+grpc = ["tonic", "prost", "tonic-build"]
 host = ["prometheus-client"]

@@ -50,7 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = EqClient::new(channel);
 
     // Reconstruct the canonical "height:namespace:commitment:l2_chain_id:batch_number" string
-    let blob_str = format!("{}:{}:{}:{}:{}", args.height, args.namespace, args.commitment, args.l2_chain_id, args.batch_number);
+    let blob_str = format!(
+        "{}:{}:{}:{}:{}",
+        args.height, args.namespace, args.commitment, args.l2_chain_id, args.batch_number
+    );
 
     // And hand it off to your existing BlobId::from_str impl:
     let blob_id: BlobId = blob_str.parse()?;
