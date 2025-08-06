@@ -23,7 +23,7 @@ pub fn main() {
         share_proofs: input.nmt_multiproofs,
         row_proof: input.row_root_multiproof,
     };
-    println!("cycle-tracker-end: convert blob to shares");
+    println!("cycle-tracker-end: deserialize ShareProof");
 
     println!("cycle-tracker-start: verify proof");
     rp.verify(data_root_as_hash)
