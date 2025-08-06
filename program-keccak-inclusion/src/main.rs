@@ -16,7 +16,7 @@ pub fn main() {
     let computed_keccak_hash: [u8; 32] = Keccak256::digest(&input.blob_data).into();
     println!("cycle-tracker-end: compute keccak hash");
 
-    println!("cycle-tracker-start: convert blob to shares");
+    println!("cycle-tracker-start: deserialize ShareProof");
     let rp = ShareProof {
         data: input.shares_data.into_iter().map(|s| s.into()).collect(),
         namespace_id: input.blob_namespace,

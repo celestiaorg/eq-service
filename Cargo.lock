@@ -2512,9 +2512,18 @@ dependencies = [
  "prometheus-client",
  "prost",
  "serde",
+<<<<<<< HEAD
  "serde_with",
  "thiserror 2.0.16",
  "tonic",
+||||||| parent of 3ba9229 (fmt, rm serde_with)
+ "serde_with",
+ "thiserror 2.0.12",
+ "tonic 0.11.0",
+=======
+ "thiserror 2.0.12",
+ "tonic 0.11.0",
+>>>>>>> 3ba9229 (fmt, rm serde_with)
  "tonic-build",
 ]
 
