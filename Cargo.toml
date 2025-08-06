@@ -53,6 +53,7 @@ http-body-util = "0.1"
 sha3 = "=0.10.8"
 [patch.crates-io]
 sha3 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", branch = "patch-sha3-v0.10.8" }
-sha2 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", branch = "patch-sha2-v0.10.8" }
+sha2-v0-9-9 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", branch = "patch-sha2-v0.9.9" }
+sha2-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", branch = "patch-sha2-v0.10.8" }
 # Internal dependency for alloy, used in sp1 SDK
 tiny-keccak = { git = "https://github.com/sp1-patches/tiny-keccak", branch = "patch-v2.0.2" }
