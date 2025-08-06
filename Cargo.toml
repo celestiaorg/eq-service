@@ -30,7 +30,6 @@ sp1-zkvm = { version = "5.1", features = ["verify"] }
 sp1-sdk = { version = "5.1" }
 sp1-build = { version = "5.1" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-serde_with = "3.14"
 tendermint-proto = "0.40"
 tendermint = "0.40"
 bincode = "1.3"

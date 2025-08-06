@@ -2520,7 +2520,6 @@ dependencies = [
  "prometheus-client",
  "prost 0.12.6",
  "serde",
- "serde_with",
  "thiserror 2.0.12",
  "tonic 0.11.0",
  "tonic-build",
