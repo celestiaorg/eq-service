@@ -1,7 +1,7 @@
 use celestia_types::{
     consts::appconsts::{
         CONTINUATION_SPARSE_SHARE_CONTENT_SIZE, FIRST_SPARSE_SHARE_CONTENT_SIZE, NAMESPACE_SIZE,
-        SEQUENCE_LEN_BYTES, SHARE_INFO_BYTES, SHARE_SIZE,
+        SEQUENCE_LEN_BYTES, SHARE_INFO_BYTES, SHARE_SIZE, SIGNER_SIZE,
     },
     ShareProof,
 };
@@ -77,31 +77,47 @@ impl ZKStackEqProofOutput {
     }
 }
 
-/// Computes Keccak-256 over the reconstructed blob bytes by streaming
-/// payload portions of each share, skipping headers.
-/// See https://docs.rs/celestia-types/latest/celestia_types/struct.Share.html
+/// Computes Keccak‐256 over the reconstructed blob bytes by streaming
+/// payload portions of each share, skipping headers and, for version 1, the signer.
+/// Supports share versions 0 and 1; panics on unknown versions.
+///
+/// See: https://celestiaorg.github.io/celestia-app/shares.html#share-version
 pub fn compute_blob_keccak(raw_shares: Vec<[u8; SHARE_SIZE]>) -> [u8; 32] {
     let mut hasher = Keccak256::new();
-    for share in raw_shares.iter() {
-        let bytes = share.as_ref();
-        // skip namespace ID + info byte
+    let mut iter = raw_shares.iter();
+
+    if let Some(first_share) = iter.next() {
+        let bytes = first_share.as_ref();
         let info_offset = NAMESPACE_SIZE;
         let info = bytes[info_offset];
-        let is_start = (info & 0b0000_0001) != 0;
-        // calculate payload start
-        let mut offset = info_offset + SHARE_INFO_BYTES;
-        if is_start {
-            offset += SEQUENCE_LEN_BYTES;
+        let version = info >> 1;
+
+        let mut offset = info_offset + SHARE_INFO_BYTES + SEQUENCE_LEN_BYTES;
+        if version == 1 {
+            offset += SIGNER_SIZE;
         }
-        // determine actual content length (exclude padding)
-        let content_len = if is_start {
-            FIRST_SPARSE_SHARE_CONTENT_SIZE
-        } else {
-            CONTINUATION_SPARSE_SHARE_CONTENT_SIZE
-        };
-        // absorb only the actual data bytes
-        hasher.update(&bytes[offset..offset + content_len]);
+
+        let content_len = FIRST_SPARSE_SHARE_CONTENT_SIZE;
+
+        match version {
+            0 | 1 => hasher.update(&bytes[offset..offset + content_len]),
+            other => panic!("unsupported share version {} in first share", other),
+        }
     }
+
+    for share in iter {
+        let bytes = share.as_ref();
+        let info = bytes[NAMESPACE_SIZE];
+        let version = info >> 1; // same logic for share version
+        let offset = NAMESPACE_SIZE + SHARE_INFO_BYTES;
+        let content_len = CONTINUATION_SPARSE_SHARE_CONTENT_SIZE;
+
+        match version {
+            0 | 1 => hasher.update(&bytes[offset..offset + content_len]),
+            other => panic!("unsupported share version {} in continuation share", other),
+        };
+    }
+
     hasher.finalize().into()
 }
 
