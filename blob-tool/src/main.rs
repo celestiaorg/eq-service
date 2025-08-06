@@ -12,6 +12,8 @@ use sha3::{Digest, Keccak256};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    #[arg(long, default_value = "http://127.0.0.1:26658")]
+    rpc: String,
     #[arg(long)]
     height: u64,
     #[arg(long)]
@@ -24,8 +26,8 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").expect("Token not provided");
-    let client = Client::new("http://127.0.0.1:26658", Some(&node_token))
+    let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").ok();
+    let client = Client::new(&args.rpc, node_token.as_deref())
         .await
         .expect("Failed creating celestia rpc client");
 
