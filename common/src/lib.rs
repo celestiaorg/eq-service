@@ -1,8 +1,12 @@
 use celestia_types::{
-    nmt::{Namespace, NamespaceProof},
-    RowProof,
+    consts::appconsts::{
+        CONTINUATION_SPARSE_SHARE_CONTENT_SIZE, FIRST_SPARSE_SHARE_CONTENT_SIZE, NAMESPACE_SIZE,
+        SEQUENCE_LEN_BYTES, SHARE_INFO_BYTES, SHARE_SIZE,
+    },
+    ShareProof,
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
 
 #[cfg(feature = "host")]
 mod error;
@@ -15,45 +19,6 @@ pub mod eqs {
     include!("generated/eqs.rs");
 }
 
-/// Newtype for data type in https://docs.rs/celestia-types/latest/celestia_types/struct.ShareProof.html
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RawShare(pub [u8; 512]);
-
-impl From<[u8; 512]> for RawShare {
-    fn from(value: [u8; 512]) -> Self {
-        RawShare(value)
-    }
-}
-impl From<RawShare> for [u8; 512] {
-    fn from(raw: RawShare) -> Self {
-        raw.0
-    }
-}
-impl From<celestia_types::Share> for RawShare {
-    fn from(value: celestia_types::Share) -> Self {
-        RawShare(*value.data())
-    }
-}
-
-impl Serialize for RawShare {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.0.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for RawShare {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        // Deserialize as Vec<u8>
-        let vec = Vec::<u8>::deserialize(deserializer)?;
-        if vec.len() != 512 {
-            return Err(serde::de::Error::invalid_length(vec.len(), &"512 bytes"));
-        }
-        let mut arr = [0u8; 512];
-        arr.copy_from_slice(&vec);
-        Ok(RawShare(arr))
-    }
-}
-
 /*
     For now, we only support ZKStackEqProofs
     These are used for Celestia integrations with Matter Labs' ZKStack
@@ -61,26 +26,19 @@ impl<'de> Deserialize<'de> for RawShare {
 */
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ZKStackEqProofInput {
-    pub blob_data: Vec<u8>,
-    pub shares_data: Vec<RawShare>,
-    pub blob_namespace: Namespace,
-    pub nmt_multiproofs: Vec<NamespaceProof>,
-    pub row_root_multiproof: RowProof,
+    pub share_proof: ShareProof,
     pub data_root: [u8; 32],
-    pub keccak_hash: [u8; 32],
-    // batch_number and chain_id are passed through to prevent proofs from being replayed
     pub batch_number: u32,
     pub chain_id: u64,
 }
 
-/// Expecting bytes:
-/// (keccak_hash: [u8; 32], pub data_root: [u8; 32])
 pub struct ZKStackEqProofOutput {
     pub keccak_hash: [u8; 32],
     pub data_root: [u8; 32],
     pub batch_number: u32,
     pub chain_id: u64,
 }
+
 impl ZKStackEqProofOutput {
     // Simple encoding, rather than use any Ethereum libraries
     pub fn to_vec(&self) -> Vec<u8> {
@@ -117,6 +75,34 @@ impl ZKStackEqProofOutput {
         };
         Ok(decoded)
     }
+}
+
+/// Computes Keccak-256 over the reconstructed blob bytes by streaming
+/// payload portions of each share, skipping headers.
+/// See https://docs.rs/celestia-types/latest/celestia_types/struct.Share.html
+pub fn compute_blob_keccak(raw_shares: Vec<[u8; SHARE_SIZE]>) -> [u8; 32] {
+    let mut hasher = Keccak256::new();
+    for share in raw_shares.iter() {
+        let bytes = share.as_ref();
+        // skip namespace ID + info byte
+        let info_offset = NAMESPACE_SIZE;
+        let info = bytes[info_offset];
+        let is_start = (info & 0b0000_0001) != 0;
+        // calculate payload start
+        let mut offset = info_offset + SHARE_INFO_BYTES;
+        if is_start {
+            offset += SEQUENCE_LEN_BYTES;
+        }
+        // determine actual content length (exclude padding)
+        let content_len = if is_start {
+            FIRST_SPARSE_SHARE_CONTENT_SIZE
+        } else {
+            CONTINUATION_SPARSE_SHARE_CONTENT_SIZE
+        };
+        // absorb only the actual data bytes
+        hasher.update(&bytes[offset..offset + content_len]);
+    }
+    hasher.finalize().into()
 }
 
 #[cfg(test)]

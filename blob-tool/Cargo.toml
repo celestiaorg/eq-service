@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 eq-common.workspace = true
 
+anyhow = { workspace = true }
 celestia-rpc = { workspace = true }
 celestia-types = { workspace = true }
 tokio = { workspace = true }
