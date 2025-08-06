@@ -2,7 +2,7 @@
 #![no_main]
 
 sp1_zkvm::entrypoint!(main);
-use celestia_types::{hash::Hash, AppVersion, Blob, ShareProof};
+use celestia_types::{hash::Hash, ShareProof};
 use eq_common::{ZKStackEqProofInput, ZKStackEqProofOutput};
 use sha3::{Digest, Keccak256};
 
@@ -12,27 +12,13 @@ pub fn main() {
     let data_root_as_hash = Hash::Sha256(input.data_root);
     println!("cycle-tracker-end: deserialize input");
 
-    println!("cycle-tracker-start: create blob");
-    let blob = Blob::new(
-        input.blob_namespace,
-        input.blob_data,
-        AppVersion::from_u64(input.app_version).unwrap(),
-    )
-    .expect("Failed creating blob");
-    println!("cycle-tracker-end: create blob");
-
     println!("cycle-tracker-start: compute keccak hash");
-    let computed_keccak_hash: [u8; 32] = Keccak256::digest(&blob.data).into();
+    let computed_keccak_hash: [u8; 32] = Keccak256::digest(&input.blob_data).into();
     println!("cycle-tracker-end: compute keccak hash");
 
     println!("cycle-tracker-start: convert blob to shares");
     let rp = ShareProof {
-        data: blob
-            .to_shares()
-            .expect("Failed to convert blob to shares")
-            .into_iter()
-            .map(|share| share.as_ref().try_into().unwrap())
-            .collect(),
+        data: input.shares_data.into_iter().map(|s| s.into()).collect(),
         namespace_id: input.blob_namespace,
         share_proofs: input.nmt_multiproofs,
         row_proof: input.row_root_multiproof,

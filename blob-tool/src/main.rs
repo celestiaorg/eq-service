@@ -6,7 +6,7 @@ use celestia_types::blob::Commitment;
 use celestia_types::nmt::Namespace;
 use celestia_types::ShareProof;
 use clap::{command, Parser};
-use eq_common::ZKStackEqProofInput;
+use eq_common::{RawShare, ZKStackEqProofInput};
 use sha3::{Digest, Keccak256};
 
 #[derive(Parser, Debug)]
@@ -64,6 +64,14 @@ async fn main() {
         blob.index
     );
 
+    println!("extracting RawShare bytes...");
+    let shares_data: Vec<RawShare> = blob
+        .to_shares()
+        .expect("Failed to convert blob to shares")
+        .into_iter()
+        .map(|s| s.into())
+        .collect();
+
     let _index = blob.index.unwrap();
     //let first_row_index: u64 = index.div_ceil(eds_size) - 1;
     // Trying this Diego's way
@@ -85,6 +93,7 @@ async fn main() {
     let proof_input = ZKStackEqProofInput {
         app_version: app_version.as_u64(),
         blob_data: blob.clone().data,
+        shares_data: shares_data.clone(),
         blob_namespace: namespace,
         nmt_multiproofs: range_response.clone().proof.share_proofs,
         row_root_multiproof: range_response.clone().proof.row_proof,
@@ -96,12 +105,7 @@ async fn main() {
 
     // create a ShareProof from the KeccakInclusionToDataRootProofInput and verify it
     let share_proof = ShareProof {
-        data: blob
-            .to_shares()
-            .expect("Failed to convert blob to shares")
-            .into_iter()
-            .map(|share| share.as_ref().try_into().unwrap())
-            .collect(),
+        data: shares_data.into_iter().map(|s| s.into()).collect(),
         namespace_id: namespace,
         share_proofs: proof_input.clone().nmt_multiproofs,
         row_proof: proof_input.clone().row_root_multiproof,
