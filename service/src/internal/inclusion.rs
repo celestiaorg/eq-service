@@ -262,7 +262,7 @@ impl InclusionService {
 
         let blob_index = blob
             .index
-            .ok_or_else(|| InclusionServiceError::MissingBlobIndex)?;
+            .ok_or(InclusionServiceError::MissingBlobIndex)?;
 
         // https://github.com/celestiaorg/eq-service/issues/65
         //let first_row_index: u64 = blob_index.div_ceil(eds_size) - 1;
@@ -333,7 +333,7 @@ impl InclusionService {
                     .message()
                     .starts_with("header: given height is from the future")
                 {
-                    e = InclusionServiceError::DaClientError(format!("{call_err}"));
+                    e = InclusionServiceError::DaClientError(call_err.to_string());
                     job_status = JobStatus::Failed(e.clone(), None);
                 } else if error_object
                     .message()
