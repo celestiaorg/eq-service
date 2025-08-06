@@ -256,6 +256,15 @@ impl InclusionService {
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
+        let shares_data: Vec<RawShare> = blob
+            .to_shares()
+            .map_err(|_| {
+                InclusionServiceError::InternalError("Failed to convert blob to shares".to_string())
+            })?
+            .iter()
+            .map(|s| s.to_owned().into())
+            .collect();
+
         let app_version = client
             .header_get_by_height(job.height.into())
             .await
@@ -289,6 +298,7 @@ impl InclusionService {
         let proof_input = ZKStackEqProofInput {
             app_version: app_version.as_u64(),
             blob_data: blob.data,
+            shares_data,
             blob_namespace: job.namespace,
             nmt_multiproofs: range_response.proof.share_proofs,
             row_root_multiproof: range_response.proof.row_proof,
