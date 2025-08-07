@@ -23,9 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").ok();
-    let client = Client::new(&args.rpc, node_token.as_deref())
-        .await
-        .expect("Failed creating celestia rpc client");
+    let client = Client::new(&args.rpc, node_token.as_deref()).await?;
 
     let header = client.header_get_by_height(args.height).await?;
 
