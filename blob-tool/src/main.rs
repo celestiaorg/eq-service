@@ -8,6 +8,8 @@ use eq_common::ZKStackEqProofInput;
 
 #[derive(Parser, Debug)]
 struct Args {
+    #[arg(long, default_value = "http://127.0.0.1:26658")]
+    rpc: String,
     #[arg(long)]
     height: u64,
     #[arg(long)]
@@ -20,8 +22,8 @@ struct Args {
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN")?;
-    let client = Client::new("http://127.0.0.1:26658", Some(&node_token)).await?;
+    let node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN").ok();
+    let client = Client::new(&args.rpc, node_token.as_deref()).await?;
 
     let header = client.header_get_by_height(args.height).await?;
 
