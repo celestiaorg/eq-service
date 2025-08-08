@@ -287,6 +287,7 @@ impl InclusionService {
             keccak_hash,
             batch_number: job.batch_number,
             chain_id: job.l2_chain_id,
+            author: blob.signer,
         };
 
         self.send_job_with_new_status(

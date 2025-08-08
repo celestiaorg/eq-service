@@ -1,5 +1,6 @@
 use celestia_types::{
     nmt::{Namespace, NamespaceProof},
+    state::AccAddress,
     RowProof,
 };
 use serde::{Deserialize, Serialize};
@@ -33,6 +34,9 @@ pub struct ZKStackEqProofInput {
 
     #[serde(rename = "row_root_multiproof")]
     pub row_proof: RowProof,
+
+    #[serde(rename = "blob_author")]
+    pub author: Option<AccAddress>,
 
     pub data_root: [u8; 32],   // already matches
     pub keccak_hash: [u8; 32], // already matches

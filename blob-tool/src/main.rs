@@ -91,6 +91,7 @@ async fn main() {
         keccak_hash: keccak_hash,
         batch_number: 0,
         chain_id: 0,
+        author: blob.signer.clone(),
     };
 
     // create a ShareProof from the KeccakInclusionToDataRootProofInput and verify it

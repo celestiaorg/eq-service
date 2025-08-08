@@ -13,8 +13,10 @@ pub fn main() {
     println!("cycle-tracker-end: deserialize input");
 
     println!("cycle-tracker-start: create blob");
-    let blob =
-        Blob::new(input.namespace_id, input.data, AppVersion::V5).expect("Failed creating blob");
+    let blob = match input.author {
+        Some(author) => Blob::new_with_signer(input.namespace_id, input.data, author, AppVersion::V5).expect("Failed creating blob"),
+        None => Blob::new(input.namespace_id, input.data, AppVersion::V5).expect("Failed creating blob"),
+    };
     println!("cycle-tracker-end: create blob");
 
     println!("cycle-tracker-start: compute keccak hash");
