@@ -2540,6 +2540,7 @@ name = "eq-sdk"
 version = "0.1.11"
 dependencies = [
  "base64 0.22.1",
+ "bincode",
  "celestia-types",
  "clap",
  "eq-common",
