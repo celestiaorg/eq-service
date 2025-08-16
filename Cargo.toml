@@ -33,6 +33,7 @@ sha3 = "0.10"
 tendermint-proto = "0.40"
 tendermint = "0.40"
 bincode = "1.3"
+boundless-market = "0.13"
 tokio = { version = "1.45", features = ["macros", "rt-multi-thread"] }
 hex = "0.4"
 serde_json = "1.0"
