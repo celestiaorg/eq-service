@@ -8,6 +8,15 @@ use log::{debug, error, info};
 use sha3::Keccak256;
 use sha3::{Digest, Sha3_256};
 use sled::{Transactional, Tree as SledTree};
+
+// Risc0 / Boundless
+use boundless_market::alloy::signers::local::PrivateKeySigner;
+use boundless_market::alloy::transports::http::reqwest::Url;
+use boundless_market::client::Client as BoundlessClient;
+use boundless_market::storage::storage_provider_from_env;
+use boundless_market::GuestEnv;
+
+// Succinct / SP1
 use sp1_sdk::{
     network::Error as SP1NetworkError, NetworkProver as SP1NetworkProver, Prover,
     SP1ProofWithPublicValues, SP1Stdin,
@@ -41,7 +50,8 @@ static KECCAK_INCLUSION_SETUP: OnceCell<Arc<SP1ProofSetup>> = OnceCell::const_ne
 pub struct InclusionService {
     pub config: InclusionServiceConfig,
     da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
-    zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+    succinct_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+    boundless_client_handle: OnceCell<Arc<BoundlessClient>>,
     pub metrics: Arc<PromMetrics>,
     pub config_db: SledTree,
     pub queue_db: SledTree,
@@ -53,7 +63,8 @@ impl InclusionService {
     pub fn new(
         config: InclusionServiceConfig,
         da_client_handle: OnceCell<Arc<CelestiaJSONClient>>,
-        zk_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+        succinct_client_handle: OnceCell<Arc<SP1NetworkProver>>,
+        boundless_client_handle: OnceCell<Arc<BoundlessClient>>,
         metrics: Arc<PromMetrics>,
         config_db: SledTree,
         queue_db: SledTree,
@@ -63,7 +74,8 @@ impl InclusionService {
         InclusionService {
             config,
             da_client_handle,
-            zk_client_handle,
+            succinct_client_handle,
+            boundless_client_handle,
             metrics,
             config_db,
             queue_db,

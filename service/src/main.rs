@@ -55,6 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         OnceCell::new(),
         OnceCell::new(),
+        OnceCell::new(),
         Arc::new(PromMetrics::new()),
         config_db.clone(),
         queue_db.clone(),
