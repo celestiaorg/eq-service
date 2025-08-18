@@ -2568,6 +2568,7 @@ dependencies = [
  "log",
  "prometheus-client",
  "serde",
+ "serde_json",
  "sha3",
  "sled",
  "sp1-sdk",
