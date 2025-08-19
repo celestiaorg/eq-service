@@ -23,8 +23,8 @@ eq-common = { path = "common", version = "0.1.11" }
 eq-sdk = { path = "sdk", version = "0.1.11" }
 
 clap = "4.5"
-celestia-types = "0.14.1"
-celestia-rpc = "0.12.1"
+celestia-types = "0.14"
+celestia-rpc = "0.12"
 nmt-rs = "0.2"
 sp1-zkvm = { version = "5.2", features = ["verify"] }
 sp1-sdk = { version = "5.2" }
