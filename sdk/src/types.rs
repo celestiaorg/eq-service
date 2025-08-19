@@ -126,6 +126,7 @@ mod test {
     use base64::engine::general_purpose::STANDARD;
 
     use super::*;
+    use bincode;
 
     #[test]
     fn test_blob_id_from_str() {
@@ -155,5 +156,22 @@ mod test {
             blob_id_to_str,
             "6952283:c292LW1pbmktYQ==:JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=:0:0"
         );
+    }
+
+    #[test]
+    fn test_blob_id_bincode() {
+        let blob_id = BlobId::new(
+            BlockHeight::from(7640999u32),
+            Namespace::new_v0(STANDARD.decode("J3fU2WHHWlJt2A==").unwrap().as_slice()).unwrap(),
+            Commitment::new(STANDARD.decode("SLzsmvT0rHZtgxS2yHHB7Hr7N6FkPi/UtUOHW0mtIqQ=").unwrap().try_into().unwrap()),
+            0u64,
+            0u32,
+        );
+
+        println!("blob_id: {:?}", blob_id);
+        let blob_id_bincode = bincode::serialize(&blob_id).unwrap();
+        let blob_id_from_bincode: BlobId = bincode::deserialize(&blob_id_bincode).unwrap();
+
+        assert_eq!(blob_id_from_bincode, blob_id);
     }
 }

@@ -28,3 +28,6 @@ prometheus-client = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
 http-body-util = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
