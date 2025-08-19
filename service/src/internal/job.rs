@@ -86,6 +86,11 @@ mod tests {
             match (&status, &deserialized) {
                 (JobStatus::DataAvailabilityPending, JobStatus::DataAvailabilityPending) => (),
                 (JobStatus::ZkProofPending(a), JobStatus::ZkProofPending(b)) => assert_eq!(a, b),
+                (JobStatus::DataAvailable(a), JobStatus::DataAvailable(b)) => {
+                    assert_eq!(a.data, b.data);
+                    assert_eq!(a.batch_number, b.batch_number);
+                    assert_eq!(a.chain_id, b.chain_id);
+                },
                 (JobStatus::Failed(e1, r1), JobStatus::Failed(e2, r2)) => {
                     assert_eq!(e1.to_string(), e2.to_string());
                     assert_eq!(r1.is_some(), r2.is_some());
