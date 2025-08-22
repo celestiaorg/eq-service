@@ -116,7 +116,7 @@ build-debug: _pre-build
 # Build in release mode, includes optimizations
 build-release: _pre-build
     cargo b -r
-    
+
 # Run rust tests and examples
 tests-examples: _pre-build
     cargo t --workspace

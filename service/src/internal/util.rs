@@ -1,8 +1,8 @@
 use log::info;
 use serde::{Deserialize, Serialize};
-use tokio::signal::{self};
 #[cfg(target_os = "linux")]
 use tokio::signal::unix::{signal as unix_signal, SignalKind};
+use tokio::signal::{self};
 
 /// A Succinct Prover Network request ID.
 /// See: <https://docs.succinct.xyz/docs/sp1/generating-proofs/prover-network/usage>

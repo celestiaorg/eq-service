@@ -135,7 +135,7 @@ mod test {
         let namespace = "c292LW1pbmktYQ==";
         let commitment = "JkVWHw0eLp6eeCEG28rLwF1xwUWGDI3+DbEyNNKq9fE=";
         let l2_chain_id = 0u64;
-        let batch_number= 0u32;
+        let batch_number = 0u32;
 
         let blob_id = BlobId::new(
             BlockHeight::from(height),
@@ -163,7 +163,13 @@ mod test {
         let blob_id = BlobId::new(
             BlockHeight::from(7640999u32),
             Namespace::new_v0(STANDARD.decode("J3fU2WHHWlJt2A==").unwrap().as_slice()).unwrap(),
-            Commitment::new(STANDARD.decode("SLzsmvT0rHZtgxS2yHHB7Hr7N6FkPi/UtUOHW0mtIqQ=").unwrap().try_into().unwrap()),
+            Commitment::new(
+                STANDARD
+                    .decode("SLzsmvT0rHZtgxS2yHHB7Hr7N6FkPi/UtUOHW0mtIqQ=")
+                    .unwrap()
+                    .try_into()
+                    .unwrap(),
+            ),
             0u64,
             0u32,
         );
