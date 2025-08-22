@@ -45,7 +45,7 @@ The service **_requires_** a connection to:
    - Fetch blob data.
    - Get headers.
    - Retrieve Merkle tree proofs for blobs.
-1. [Succinct's prover network](https://docs.succinct.xyz/docs/sp1/generating-proofs/prover-network) as a provider to generate Zero-Knowledge Proofs (ZKPs) of data existing on Celestia.
+1. [Succinct's prover network](https://docs.succinct.xyz/docs/sp1/prover-network/quickstart) as a provider to generate Zero-Knowledge Proofs (ZKPs) of data existing on Celestia.
    _See the [ZKP program](./program-keccak-inclusion/src/main.rs) for details on what is proven._
 
 ## Interact
@@ -92,6 +92,11 @@ grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
 # https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
 grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
   -d '{"height": 4499999, "namespace": "Ucwac9Zflfa95g==", "commitment":"S2iIifIPdAjQ33KPeyfAga26FSF3IL11WsCGtJKSOTA="}' \
+  -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
+
+# https://mocha.celenium.io/tx/36797fdd1faa19ef8df1a3d3ec1b0278eb784b0a8cc3d5cd94db10b254f3eb78
+grpcurl -import-path $EQ_PROTO_DIR -proto eqservice.proto \
+  -d '{"height": 6692080, "namespace": "XSUTEfJbE6VJ4A==", "commitment":"iu5d9b+rtl5B/j2ju3hUqbJT0y/kcUV4gHUdCvU2Jn4="}' \
   -plaintext $EQ_SOCKET eqs.Inclusion.GetKeccakInclusion
 ```
 
@@ -144,6 +149,20 @@ docker pull celestiaorg/eq-service:latest
 ```
 
 _Don't forget you need to [configure your environment](#configure)_.
+
+### Metrics and Alerts
+
+This service exposes a HTTP endpoint at `/metrics` that you can connect to [Prometeus](https://prometheus.io/) for service monitoring, alerts, and more.
+
+With the eq-service running locally (on metal, not in a container), you can connect a development only(!) server by using:
+
+```sh
+docker run -d \
+  --network="host" \
+  -p 127.0.0.1:9090:9090 \
+  -v $(pwd)/infra/prometheus.yml:/etc/prometheus/prometheus.yml \
+  prom/prometheus
+```
 
 ## Develop
 

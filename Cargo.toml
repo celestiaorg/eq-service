@@ -12,23 +12,23 @@ default-members = ["service"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.7"
+version = "0.1.12"
 edition = "2021"
-authors = ["Nuke <nuke-web3@proton.me>", "c-node <chuckhead7@gmail.com>"]
+authors = ["Nuke <nuke-web3@proton.me>", "c-node <connor@s1nus.com>"]
 license = "MIT"
 homepage = "https://celestia.org"
 repository = "https://github.com/celestiaorg/eq-service"
 
 [workspace.dependencies]
-eq-common = { path = "common", version = "0.1.7" }
-eq-sdk = { path = "sdk", version = "0.1.7" }
+eq-common = { path = "common", version = "0.1.12" }
+eq-sdk = { path = "sdk", version = "0.1.12" }
 
 clap = "4.5"
-celestia-types = "0.11"
-celestia-rpc = "0.11"
+celestia-types = "0.14"
+celestia-rpc = "0.12"
 nmt-rs = "0.2"
-sp1-zkvm = { version = "5.0", features = ["verify"] }
-sp1-sdk = { version = "5.0" }
+sp1-zkvm = { version = "5.2", features = ["verify"] }
+sp1-sdk = { version = "5.2" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 sha3 = "0.10"
 tendermint-proto = "0.40"
@@ -47,6 +47,10 @@ log = "0.4"
 base64 = "0.22"
 sp1-bn254-poseidon = {git = "https://github.com/S1nus/sp1-poseidon2-bn254-scalar"}
 jsonrpsee = "0.25"
+prometheus-client = "0.23"
+hyper = "1.6"
+hyper-util = "0.1"
+http-body-util = "0.1"
 
 [patch.crates-io]
 # TODO: update to 5.0?

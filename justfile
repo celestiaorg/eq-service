@@ -75,16 +75,19 @@ run-debug *FLAGS: _pre-build _pre-run
         exit 1
     fi
     if ! echo "ping" | websocat $CELESTIA_NODE_HTTP -1 -E &> /dev/null ; then
-        echo -e "⛔ Node not avalible @ $CELESTIA_NODE_HTTP - start a mocha one locally with 'just mocha' "
+        echo -e "⛔ Node not available @ $CELESTIA_NODE_HTTP - start a mocha one locally with 'just mocha' "
         exit 1
     fi
 
     # export CELESTIA_NODE_AUTH_TOKEN=$(celestia light auth admin --p2p.network mocha)
     RUST_LOG=eq_service=debug cargo r -- {{ FLAGS }}
 
-# Build docker image & tag `eq-service`
+# Build docker image & tag
 docker-build:
-    docker build -t eq-service .
+    #!/usr/bin/env bash
+    set -a  # Auto export vars
+    source {{ env-settings }}
+    docker build --build-arg BUILDKIT_INLINE_CACHE=1 --tag "$DOCKER_CONTAINER_NAME" --progress=plain .
 
 # Run a pre-built docker image
 docker-run:
@@ -113,6 +116,12 @@ build-debug: _pre-build
 # Build in release mode, includes optimizations
 build-release: _pre-build
     cargo b -r
+    
+# Run rust tests and examples
+build-release: _pre-build
+    cargo t --workspace
+    # TODO: setup integration tests for example client
+    # cargo r -p eq-sdk --example client -- --socket <SOCKET> --height <HEIGHT> --namespace <NAMESPACE> --commitment <COMMITMENT>
 
 # Scrub build artifacts
 clean:

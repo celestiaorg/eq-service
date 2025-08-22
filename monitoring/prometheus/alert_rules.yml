@@ -1,0 +1,166 @@
+groups:
+  - name: eq-service-alerts
+    rules:
+      # Service availability alerts
+      - alert: EqServiceDown
+        expr: up{job="eq-service"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "EQ Service is down"
+          description: "EQ Service has been down for more than 30 seconds"
+
+      # gRPC request rate alerts
+      - alert: EqServiceLowRequestRate
+        expr: rate(eqs_grpc_req_total[5m]) < 0.01
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "EQ Service receiving very few requests"
+          description: "EQ Service gRPC request rate is {{ $value }} requests/second, which is unusually low"
+
+      - alert: EqServiceHighRequestRate
+        expr: rate(eqs_grpc_req_total[5m]) > 100
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "EQ Service receiving high request volume"
+          description: "EQ Service gRPC request rate is {{ $value }} requests/second, which is unusually high"
+
+      # Job processing alerts
+      - alert: EqServiceJobsStuck
+        expr: increase(eqs_jobs_attempted_total[5m]) > 0 and increase(eqs_jobs_finished_total[5m]) == 0 and increase(eqs_jobs_errors_total[5m]) == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "EQ Service jobs may be stuck"
+          description: "Jobs are being attempted but none are finishing or failing"
+
+      - alert: EqServiceHighJobFailureRate
+        expr: rate(eqs_jobs_errors_total[5m]) / rate(eqs_jobs_attempted_total[5m]) > 0.5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "EQ Service high job failure rate"
+          description: "{{ $value | humanizePercentage }} of jobs are failing in the last 5 minutes"
+
+      - alert: EqServiceJobBacklog
+        expr: eqs_jobs_attempted_total - eqs_jobs_finished_total - eqs_jobs_errors_total > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "EQ Service job backlog is growing"
+          description: "There are {{ $value }} jobs in the backlog"
+
+      # ZK proof timing alerts
+      - alert: EqServiceSlowZkProofGeneration
+        expr: histogram_quantile(0.95, rate(eqs_zk_proof_wait_time_bucket[5m])) > 300
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "EQ Service ZK proof generation is slow"
+          description: "95th percentile of ZK proof wait time is {{ $value }}s, which is above 5 minutes"
+
+      - alert: EqServiceVerySlowZkProofGeneration
+        expr: histogram_quantile(0.95, rate(eqs_zk_proof_wait_time_bucket[5m])) > 600
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "EQ Service ZK proof generation is very slow"
+          description: "95th percentile of ZK proof wait time is {{ $value }}s, which is above 10 minutes"
+
+      # Resource usage alerts
+      - alert: EqServiceHighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on EQ Service host"
+          description: "Memory usage is above 90% ({{ $value | humanizePercentage }})"
+
+      - alert: EqServiceHighCpuUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on EQ Service host"
+          description: "CPU usage is above 80% ({{ $value }}%)"
+
+      - alert: EqServiceDiskSpaceLow
+        expr: (node_filesystem_free_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"}) < 0.2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on EQ Service host"
+          description: "Disk space is below 20% ({{ $value | humanizePercentage }} remaining)"
+
+  - name: external-dependencies
+    rules:
+      # External service monitoring
+      - alert: CelestiaNodeDown
+        expr: probe_success{instance="https://docs.celestia.org"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celestia network appears unreachable"
+          description: "Cannot reach Celestia-related endpoint"
+
+      - alert: SuccinctNetworkDown
+        expr: probe_success{instance="https://api.succinct.xyz"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Succinct ZK prover network appears unreachable"
+          description: "Cannot reach Succinct network endpoint"
+
+  - name: system-alerts
+    rules:
+      # System-level alerts
+      - alert: NodeExporterDown
+        expr: up{job="node-exporter"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node Exporter is down"
+          description: "Node Exporter has been down for more than 1 minute"
+
+      - alert: CadvisorDown
+        expr: up{job="cadvisor"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "cAdvisor is down"
+          description: "cAdvisor has been down for more than 1 minute"
+
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus configuration reload failed"
+          description: "Prometheus configuration reload has failed"
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager is down"
+          description: "Alertmanager has been down for more than 1 minute"

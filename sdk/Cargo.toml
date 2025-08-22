@@ -19,3 +19,5 @@ tokio = {workspace = true}
 
 [dev-dependencies]
 clap = {workspace = true, features = ["derive", "env"]}
+hex = "0.4.3"
+bincode = "1.3"

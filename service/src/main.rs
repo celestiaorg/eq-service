@@ -5,10 +5,12 @@ use eq_common::eqs::inclusion_server::InclusionServer;
 use internal::grpc::InclusionServiceArc;
 use internal::inclusion::*;
 use internal::job::*;
+use internal::prom_metrics::PromMetrics;
 use internal::util::*;
 
 use log::{debug, error, info};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{mpsc, OnceCell};
 use tonic::transport::Server;
 
@@ -20,13 +22,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("NETWORK_PRIVATE_KEY for Succinct Prover env var required");
     let da_node_token = std::env::var("CELESTIA_NODE_AUTH_TOKEN")
         .expect("CELESTIA_NODE_AUTH_TOKEN env var required");
-    let da_node_ws =
+    let zk_proof_gen_timeout = Duration::from_secs(
+        std::env::var("PROOF_GEN_TIMEOUT_SECONDS")
+            .expect("PROOF_GEN_TIMEOUT_SECONDS env var required")
+            .parse()
+            .expect("PROOF_GEN_TIMEOUT_SECONDS must be integer"),
+    );
+    let da_node_http =
         std::env::var("CELESTIA_NODE_HTTP").expect("CELESTIA_NODE_HTTP env var required");
     let db_path = std::env::var("EQ_DB_PATH").expect("EQ_DB_PATH env var required");
     let service_socket: std::net::SocketAddr = std::env::var("EQ_SOCKET")
         .expect("EQ_SOCKET env var required")
         .parse()
-        .expect("EQ_SOCKET env var required");
+        .expect("EQ_SOCKET parse");
+    let service_prometheus_socket: std::net::SocketAddr = std::env::var("EQ_PROMETHEUS_SOCKET")
+        .expect("EQ_PROMETHEUS_SOCKET env var required")
+        .parse()
+        .expect("EQ_PROMETHEUS_SOCKET parse");
 
     let db = sled::open(db_path.clone())?;
     let queue_db = db.open_tree("queue")?;
@@ -38,20 +50,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let inclusion_service = Arc::new(InclusionService::new(
         InclusionServiceConfig {
             da_node_token,
-            da_node_ws,
+            da_node_http,
+            zk_proof_gen_timeout,
         },
         OnceCell::new(),
         OnceCell::new(),
+        Arc::new(PromMetrics::new()),
         config_db.clone(),
         queue_db.clone(),
         finished_db.clone(),
         job_sender.clone(),
     ));
 
+    debug!("Starting Prometheus service");
+    tokio::spawn({
+        let service = inclusion_service.clone();
+        async move {
+            let _ = service
+                .metrics
+                .clone()
+                .serve(service_prometheus_socket)
+                .await;
+        }
+    });
+
+    debug!("Connecting to ZK client");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
             let program_id = get_program_id().await;
+            info!("zkstack-inclusion program id: {}", hex::encode(&program_id));
             let zk_client = service.clone().get_zk_client_remote().await;
             debug!("ZK client prepared, acquiring setup");
             let _ = service.get_proof_setup(&program_id, zk_client).await;
@@ -60,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // TODO: crash whole program if this fails
     });
 
-    debug!("Starting service");
+    debug!("Listening to shutdown signals");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {
@@ -75,6 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         async move { service.job_worker(job_receiver).await }
     });
 
+    debug!("Connecting to DA client");
     tokio::spawn({
         let service = inclusion_service.clone();
         async move {

@@ -21,6 +21,14 @@ struct Args {
     /// Commitment (base64-encoded, 32 bytes)
     #[arg(short, long)]
     commitment: String,
+
+    /// Layer2 ChainID, to prevent replay on other chains (u64)
+    #[arg(short, long)]
+    l2_chain_id: String,
+
+    /// Batch Number, to prevent replay on same chain (u32)
+    #[arg(short, long)]
+    batch_number: String,
 }
 
 #[tokio::main]
@@ -41,14 +49,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|e| format!("gRPC connect error: {e}"))?;
     let client = EqClient::new(channel);
 
-    // Reconstruct the canonical "height:namespace:commitment" string
-    let blob_str = format!("{}:{}:{}", args.height, args.namespace, args.commitment);
+    // Reconstruct the canonical "height:namespace:commitment:l2_chain_id:batch_number" string
+    let blob_str = format!("{}:{}:{}:{}:{}", args.height, args.namespace, args.commitment, args.l2_chain_id, args.batch_number);
 
     // And hand it off to your existing BlobId::from_str impl:
     let blob_id: BlobId = blob_str.parse()?;
 
     // Call the RPC
-    let resp = client.get_keccak_inclusion(&blob_id).await?;
+    let resp = client.get_zk_stack(&blob_id).await?;
     println!("{:#?}", resp);
 
     Ok(())
