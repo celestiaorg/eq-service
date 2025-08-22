@@ -1616,7 +1616,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c8da7e4e1d4ae492170a9c551419e89e314c1438652bb512e00091b39bdf0b"
 dependencies = [
  "bytes",
- "prost 0.13.5",
+ "prost",
  "prost-build",
  "prost-types",
  "protox",
@@ -1665,7 +1665,7 @@ dependencies = [
  "multiaddr",
  "multihash",
  "nmt-rs",
- "prost 0.13.5",
+ "prost",
  "rust_decimal",
  "serde",
  "serde_repr",
@@ -2474,7 +2474,7 @@ version = "0.1.12"
 dependencies = [
  "celestia-types",
  "prometheus-client",
- "prost 0.12.6",
+ "prost",
  "serde",
  "thiserror 2.0.16",
  "tonic",
@@ -4969,22 +4969,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.12.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deb1435c188b76130da55f17a466d252ff7b1418b2ad3e037d127b94e3411f29"
-dependencies = [
- "bytes",
- "prost-derive 0.12.6",
-]
-
-[[package]]
-name = "prost"
 version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
 dependencies = [
  "bytes",
- "prost-derive 0.13.5",
+ "prost-derive",
 ]
 
 [[package]]
@@ -5000,24 +4990,11 @@ dependencies = [
  "once_cell",
  "petgraph",
  "prettyplease",
- "prost 0.13.5",
+ "prost",
  "prost-types",
  "regex",
  "syn 2.0.106",
  "tempfile",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.12.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
-dependencies = [
- "anyhow",
- "itertools 0.12.1",
- "proc-macro2",
- "quote",
- "syn 2.0.106",
 ]
 
 [[package]]
@@ -5042,7 +5019,7 @@ dependencies = [
  "logos",
  "miette",
  "once_cell",
- "prost 0.13.5",
+ "prost",
  "prost-types",
 ]
 
@@ -5052,7 +5029,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52c2c1bf36ddb1a1c396b3601a3cec27c2462e45f07c386894ec3ccf5332bd16"
 dependencies = [
- "prost 0.13.5",
+ "prost",
 ]
 
 [[package]]
@@ -5063,7 +5040,7 @@ checksum = "6f352af331bf637b8ecc720f7c87bf903d2571fa2e14a66e9b2558846864b54a"
 dependencies = [
  "bytes",
  "miette",
- "prost 0.13.5",
+ "prost",
  "prost-reflect",
  "prost-types",
  "protox-parse",
@@ -6398,7 +6375,7 @@ checksum = "a04cfd497bcb85d52eccd3718ddc8d88f17bfc4aefa288b41d1b0b21a065f3fc"
 dependencies = [
  "bincode",
  "ctrlc",
- "prost 0.13.5",
+ "prost",
  "serde",
  "sp1-core-machine",
  "sp1-prover",
@@ -6680,7 +6657,7 @@ dependencies = [
  "p3-baby-bear",
  "p3-field",
  "p3-fri",
- "prost 0.13.5",
+ "prost",
  "reqwest",
  "reqwest-middleware",
  "rustls 0.23.31",
@@ -6950,7 +6927,7 @@ dependencies = [
  "k256",
  "num-traits",
  "once_cell",
- "prost 0.13.5",
+ "prost",
  "ripemd",
  "serde",
  "serde_bytes",
@@ -6973,7 +6950,7 @@ checksum = "d2c40e13d39ca19082d8a7ed22de7595979350319833698f8b1080f29620a094"
 dependencies = [
  "bytes",
  "flex-error",
- "prost 0.13.5",
+ "prost",
  "serde",
  "serde_bytes",
  "subtle-encoding",
@@ -7251,7 +7228,7 @@ dependencies = [
  "hyper-util",
  "percent-encoding",
  "pin-project",
- "prost 0.13.5",
+ "prost",
  "rustls-native-certs 0.8.1",
  "rustls-pemfile 2.2.0",
  "socket2 0.5.10",
@@ -7449,7 +7426,7 @@ dependencies = [
  "http 1.3.1",
  "http-body-util",
  "hyper 1.7.0",
- "prost 0.13.5",
+ "prost",
  "reqwest",
  "serde",
  "serde_json",
