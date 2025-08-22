@@ -1,8 +1,8 @@
 use log::info;
 use serde::{Deserialize, Serialize};
-use tokio::signal::{self};
 #[cfg(target_os = "linux")]
 use tokio::signal::unix::{signal as unix_signal, SignalKind};
+use tokio::signal::{self};
 
 /// A Succinct Prover Network request ID.
 /// See: <https://docs.succinct.xyz/docs/sp1/generating-proofs/prover-network/usage>
@@ -11,7 +11,6 @@ pub type SuccNetJobId = [u8; 32];
 /// A SHA3 256 bit hash of a zkVM program's ELF.
 pub type SuccNetProgramId = [u8; 32];
 
-#[allow(dead_code)]
 #[derive(Serialize, Deserialize)]
 pub struct SP1ProofSetup {
     pub pk: sp1_sdk::SP1ProvingKey,

@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .build_server(true)
             .build_client(true)
             .out_dir(code_gen_path)
-            .compile(&["proto/eqservice.proto"], &["proto/"])?;
+            .compile_protos(&["proto/eqservice.proto"], &["proto/"])?;
         Ok(())
     }
     #[cfg(not(feature = "grpc"))]

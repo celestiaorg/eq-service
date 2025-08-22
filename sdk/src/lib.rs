@@ -7,7 +7,7 @@ use tonic::transport::Channel;
 use tonic::Status as TonicStatus;
 
 pub mod types;
-pub use types::BlobId;
+pub use types::JobId;
 
 #[derive(Debug)]
 pub struct EqClient {
@@ -20,20 +20,21 @@ impl EqClient {
     }
     pub fn get_zk_stack<'a>(
         &'a self,
-        request: &'a BlobId,
+        request: &'a JobId,
     ) -> impl std::future::Future<Output = Result<GetZkStackResponse, TonicStatus>> + Send + 'a
     where
         Self: Sync,
     {
         async {
             let request = GetZkStackRequest {
-                commitment: request.commitment.hash().to_vec(),
+                commitment: request.blob_id.commitment.hash().to_vec(),
                 namespace: request
+                    .blob_id
                     .namespace
                     .id_v0()
                     .ok_or(TonicStatus::invalid_argument("Namespace invalid"))?
                     .to_vec(),
-                height: request.height.into(),
+                height: request.blob_id.height.into(),
                 batch_number: request.batch_number,
                 chain_id: request.l2_chain_id,
             };

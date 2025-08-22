@@ -2,6 +2,7 @@
 
 mod internal;
 use eq_common::eqs::inclusion_server::InclusionServer;
+use eq_sdk::JobId;
 use internal::grpc::InclusionServiceArc;
 use internal::inclusion::*;
 use internal::job::*;
@@ -46,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_db = db.open_tree("config")?;
 
     info!("Building clients and service setup");
-    let (job_sender, job_receiver) = mpsc::unbounded_channel::<Option<Job>>();
+    let (job_sender, job_receiver) = mpsc::unbounded_channel::<Option<JobId>>();
     let inclusion_service = Arc::new(InclusionService::new(
         InclusionServiceConfig {
             da_node_token,
@@ -119,7 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     debug!("Restarting unfinished jobs");
     for (job_key, queue_data) in queue_db.iter().flatten() {
-        let job: Job = bincode::deserialize(&job_key).unwrap();
+        let job: JobId = bincode::deserialize(&job_key).unwrap();
         debug!("Sending {job:?}");
         if let Ok(job_status) = bincode::deserialize::<JobStatus>(&queue_data) {
             match job_status {

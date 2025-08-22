@@ -1,8 +1,9 @@
 use crate::internal::prom_metrics::PromMetrics;
-use crate::{Job, JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
+use crate::{JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
 use eq_common::{ErrorLabels, InclusionServiceError, ZKStackEqProofInput};
+use eq_sdk::JobId;
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
 use sha3::Keccak256;
@@ -46,7 +47,7 @@ pub struct InclusionService {
     pub config_db: SledTree,
     pub queue_db: SledTree,
     pub finished_db: SledTree,
-    pub job_sender: mpsc::UnboundedSender<Option<Job>>,
+    pub job_sender: mpsc::UnboundedSender<Option<JobId>>,
 }
 
 impl InclusionService {
@@ -58,7 +59,7 @@ impl InclusionService {
         config_db: SledTree,
         queue_db: SledTree,
         finished_db: SledTree,
-        job_sender: mpsc::UnboundedSender<Option<Job>>,
+        job_sender: mpsc::UnboundedSender<Option<JobId>>,
     ) -> Self {
         InclusionService {
             config,
@@ -91,7 +92,7 @@ impl InclusionService {
     /// the job is atomically removed from the queue and added to a results database.
     pub async fn job_worker(
         self: Arc<Self>,
-        mut job_receiver: mpsc::UnboundedReceiver<Option<Job>>,
+        mut job_receiver: mpsc::UnboundedReceiver<Option<JobId>>,
     ) {
         debug!("Job worker started");
         while let Some(Some(job)) = job_receiver.recv().await {
@@ -115,7 +116,7 @@ impl InclusionService {
     }
 
     /// The main service task: produce a proof based on a [Job] requested.
-    pub async fn prove(&self, job: Job) -> Result<(), InclusionServiceError> {
+    pub async fn prove(&self, job: JobId) -> Result<(), InclusionServiceError> {
         let job_key = bincode::serialize(&job)
             .map_err(|e| InclusionServiceError::InternalError(e.to_string()))?;
         if let Some(queue_data) = self
@@ -227,14 +228,14 @@ impl InclusionService {
     /// On `Ok(())`, the queue DB contains valid ZKP input inside a new [JobStatus::DataAvailable] on the queue.
     async fn get_zk_proof_input_from_da(
         &self,
-        job: &Job,
+        job: &JobId,
         job_key: &[u8],
         client: Arc<CelestiaJSONClient>,
     ) -> Result<(), InclusionServiceError> {
         debug!("Preparing request to Celestia");
 
         let header = client
-            .header_get_by_height(job.height.into())
+            .header_get_by_height(job.blob_id.height.into())
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
@@ -247,7 +248,11 @@ impl InclusionService {
         let ods_size: u64 = eds_size / 2;
 
         let blob = client
-            .blob_get(job.height.into(), job.namespace, job.commitment)
+            .blob_get(
+                job.blob_id.height.into(),
+                job.blob_id.namespace,
+                job.blob_id.commitment,
+            )
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 
@@ -276,7 +281,7 @@ impl InclusionService {
         debug!("Creating ZK Proof input from Celestia Data");
         let proof_input = ZKStackEqProofInput {
             data: blob.data,
-            namespace_id: job.namespace,
+            namespace_id: job.blob_id.namespace,
             share_proofs: range_response.proof.share_proofs,
             row_proof: range_response.proof.row_proof,
             data_root: header.dah.hash().as_bytes().try_into().map_err(|_| {
@@ -303,7 +308,7 @@ impl InclusionService {
     fn handle_da_client_error(
         &self,
         da_client_error: JsonRpcError,
-        job: &Job,
+        job: &JobId,
         job_key: &[u8],
     ) -> InclusionServiceError {
         error!("Celestia Client error: {da_client_error}");
@@ -377,7 +382,7 @@ impl InclusionService {
     fn handle_zk_client_error(
         &self,
         zk_client_error: &SP1NetworkError,
-        job: &Job,
+        job: &JobId,
         job_key: &[u8],
     ) -> InclusionServiceError {
         error!("SP1 Client error: {zk_client_error}");
@@ -432,7 +437,7 @@ impl InclusionService {
         &self,
         program_id: &SuccNetProgramId,
         proof_input: &ZKStackEqProofInput,
-        job: &Job,
+        job: &JobId,
         job_key: &[u8],
     ) -> Result<SuccNetJobId, InclusionServiceError> {
         debug!("Preparing prover network request and starting proving");
@@ -466,7 +471,7 @@ impl InclusionService {
     /// Await a proof request from Succinct's prover network
     async fn wait_for_zk_proof(
         &self,
-        job: &Job,
+        job: &JobId,
         job_key: &[u8],
         request_id: SuccNetJobId,
     ) -> Result<SP1ProofWithPublicValues, InclusionServiceError> {
@@ -524,7 +529,7 @@ impl InclusionService {
         &self,
         job_key: Vec<u8>,
         update_status: JobStatus,
-        job: Job,
+        job: JobId,
     ) -> Result<(), InclusionServiceError> {
         debug!("Sending {job:?} back with updated status: {update_status:?}");
         (&self.queue_db, &self.finished_db)
