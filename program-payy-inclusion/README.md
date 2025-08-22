@@ -1,3 +1,2 @@
-# Program
-
-TODO: Write up a readme :)
+# Payy DA Commitment Diagram:
+![Payy DA Commitment Overview](./PayyDACommitment.png)
