@@ -11,7 +11,6 @@ pub type SuccNetJobId = [u8; 32];
 /// A SHA3 256 bit hash of a zkVM program's ELF.
 pub type SuccNetProgramId = [u8; 32];
 
-#[allow(dead_code)]
 #[derive(Serialize, Deserialize)]
 pub struct SP1ProofSetup {
     pub pk: sp1_sdk::SP1ProvingKey,

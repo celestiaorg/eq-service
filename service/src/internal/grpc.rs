@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use eq_sdk::types::BlobId;
 use log::{debug, error, info, warn};
 use tonic::{Request, Response, Status};
 
@@ -8,10 +9,11 @@ use eq_common::eqs::{
     get_zk_stack_response::{ResponseValue, Status as ResponseStatus},
     GetZkStackRequest, GetZkStackResponse, ProofWithPublicValues,
 };
+use eq_sdk::JobId;
 
 use celestia_types::{blob::Commitment, nmt::Namespace};
 
-use crate::{InclusionService, Job, JobStatus};
+use crate::{InclusionService, JobStatus};
 
 // I hate this workaround. Kill it with fire.
 pub struct InclusionServiceArc(pub Arc<InclusionService>);
@@ -24,18 +26,21 @@ impl Inclusion for InclusionServiceArc {
     ) -> Result<Response<GetZkStackResponse>, Status> {
         self.0.metrics.grpc_req.inc();
         let request = request.into_inner();
-        let job = Job::new(
-            request
-                .height
-                .try_into()
-                .map_err(|_| Status::invalid_argument("Block Height must be u64"))?,
-            // TODO: should we have some handling of versions here?
-            Namespace::new_v0(&request.namespace).map_err(|_| {
-                Status::invalid_argument("Namespace v0 expected! Must be 32 bytes, check encoding")
-            })?,
-            Commitment::new(request.commitment.try_into().map_err(|_| {
-                Status::invalid_argument("Commitment must be 32 bytes, check encoding")
-            })?),
+        let job = JobId::new(
+            BlobId::new(
+                request
+                    .height
+                    .try_into()
+                    .map_err(|_| Status::invalid_argument("Block Height must be u64"))?,
+                // TODO: should we have some handling of versions here?
+                Namespace::new_v0(&request.namespace).map_err(|_| {
+                    Status::invalid_argument("Namespace v0 expected! Must be 32 bytes, check encoding")
+                })?,
+                Commitment::new(request.commitment.try_into().map_err(|_| {
+                    Status::invalid_argument("Commitment must be 32 bytes, check encoding")
+                })?),
+                
+            ),
             request.chain_id,
             request.batch_number,
         );
