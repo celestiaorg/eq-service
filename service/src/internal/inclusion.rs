@@ -248,7 +248,11 @@ impl InclusionService {
         let ods_size: u64 = eds_size / 2;
 
         let blob = client
-            .blob_get(job.blob_id.height.into(), job.blob_id.namespace, job.blob_id.commitment)
+            .blob_get(
+                job.blob_id.height.into(),
+                job.blob_id.namespace,
+                job.blob_id.commitment,
+            )
             .await
             .map_err(|e| self.handle_da_client_error(e, job, job_key))?;
 

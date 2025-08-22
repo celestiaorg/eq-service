@@ -34,12 +34,13 @@ impl Inclusion for InclusionServiceArc {
                     .map_err(|_| Status::invalid_argument("Block Height must be u64"))?,
                 // TODO: should we have some handling of versions here?
                 Namespace::new_v0(&request.namespace).map_err(|_| {
-                    Status::invalid_argument("Namespace v0 expected! Must be 32 bytes, check encoding")
+                    Status::invalid_argument(
+                        "Namespace v0 expected! Must be 32 bytes, check encoding",
+                    )
                 })?,
                 Commitment::new(request.commitment.try_into().map_err(|_| {
                     Status::invalid_argument("Commitment must be 32 bytes, check encoding")
                 })?),
-                
             ),
             request.chain_id,
             request.batch_number,
