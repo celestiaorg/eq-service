@@ -38,9 +38,9 @@ hex = "0.4"
 serde_json = "1.0"
 thiserror = "2.0"
 sled = "0.34"
-prost = "0.12.6"
-tonic = { version = "0.11.0", default-features = false, features = ["codegen"] }
-tonic-build = { version = "0.11.0", default-features = false }
+prost = "0.13.3"
+tonic = { version = "0.12.3", default-features = false, features = ["codegen"] }
+tonic-build = { version = "0.12.3", default-features = false }
 env_logger = "0.11"
 log = "0.4"
 base64 = "0.22"
