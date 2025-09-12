@@ -1,12 +1,8 @@
 use eq_common::{InclusionServiceError, ZKStackEqProofInput};
-use eq_sdk::types::BlobId;
 use serde::{Deserialize, Serialize};
 use sp1_sdk::SP1ProofWithPublicValues;
 
 use crate::SuccNetJobId;
-
-/// A job for the service, mapped to a [BlobId]
-pub type Job = BlobId;
 
 /// Used as a [Job] state machine for the eq-service.
 ///
