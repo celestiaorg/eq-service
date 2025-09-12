@@ -2,6 +2,7 @@
 members = [
   "service",
   "program-keccak-inclusion",
+  "program-payy-inclusion",
   "common",
   "blob-tool",
   "runner-keccak-inclusion",
@@ -43,6 +44,7 @@ tonic-build = { version = "0.12", default-features = false }
 env_logger = "0.11"
 log = "0.4"
 base64 = "0.22"
+sp1-bn254-poseidon = {git = "https://github.com/S1nus/sp1-poseidon2-bn254-scalar"}
 jsonrpsee = "0.25"
 prometheus-client = "0.24"
 hyper = "1.6"
