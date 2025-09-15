@@ -4,6 +4,7 @@ use crate::{JobStatus, SP1ProofSetup, SuccNetJobId, SuccNetProgramId};
 use celestia_rpc::{BlobClient, Client as CelestiaJSONClient, HeaderClient, ShareClient};
 use celestia_types::ShareProof;
 use eq_common::{ErrorLabels, InclusionServiceError, ZKStackEqProofInput};
+use eq_sdk::JobId;
 use jsonrpsee::core::ClientError as JsonRpcError;
 use log::{debug, error, info};
 use sha3::{Digest, Sha3_256};
@@ -284,7 +285,6 @@ impl InclusionService {
             })?,
             batch_number: job.batch_number,
             chain_id: job.l2_chain_id,
-            author: blob.signer,
         };
 
         self.send_job_with_new_status(

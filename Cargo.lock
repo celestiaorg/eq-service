@@ -2513,23 +2513,9 @@ dependencies = [
  "prometheus-client",
  "prost",
  "serde",
-<<<<<<< HEAD
-<<<<<<< HEAD
- "serde_with",
+ "sha3",
  "thiserror 2.0.16",
  "tonic",
-||||||| parent of 3ba9229 (fmt, rm serde_with)
- "serde_with",
-||||||| parent of 36b2e31 (untested! move to ShareProof as input)
-=======
- "sha3",
->>>>>>> 36b2e31 (untested! move to ShareProof as input)
- "thiserror 2.0.12",
- "tonic 0.11.0",
-=======
- "thiserror 2.0.12",
- "tonic 0.11.0",
->>>>>>> 3ba9229 (fmt, rm serde_with)
  "tonic-build",
 ]
 
@@ -2548,7 +2534,6 @@ name = "eq-sdk"
 version = "0.1.12"
 dependencies = [
  "base64 0.22.1",
- "bincode",
  "celestia-types",
  "clap",
  "eq-common",
