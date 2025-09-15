@@ -1,5 +1,5 @@
 use clap::Parser;
-use eq_sdk::{types::BlobId, EqClient, JobId};
+use eq_sdk::{EqClient, JobId};
 use tonic::transport::Endpoint;
 
 #[derive(Parser, Debug)]
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = EqClient::new(channel);
 
     // Reconstruct the canonical "height:namespace:commitment:l2_chain_id:batch_number" string
-    let blob_str = format!(
+    let job_str = format!(
         "{}:{}:{}:{}:{}",
         args.height, args.namespace, args.commitment, args.l2_chain_id, args.batch_number
     );

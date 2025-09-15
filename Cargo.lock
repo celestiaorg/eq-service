@@ -1393,7 +1393,6 @@ dependencies = [
  "eq-common",
  "hex",
  "serde_json",
- "sha3",
  "tokio",
 ]
 
@@ -2525,7 +2524,6 @@ version = "0.1.12"
 dependencies = [
  "celestia-types",
  "eq-common",
- "sha3",
  "sp1-zkvm",
 ]
 
@@ -2534,6 +2532,7 @@ name = "eq-sdk"
 version = "0.1.12"
 dependencies = [
  "base64 0.22.1",
+ "bincode",
  "celestia-types",
  "clap",
  "eq-common",
