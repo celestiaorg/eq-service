@@ -216,14 +216,11 @@ mod test {
         let mut rng = StdRng::seed_from_u64(0xCE1E5);
 
         // Run multiple randomized trials
-        for _ in 0..1 {
+        for _ in 0..5 {
             // Random length in [100, 1_000_000]
             let len = rng.gen_range(100usize..=1_000_000usize);
             let mut data = vec![0u8; len];
             rng.fill(&mut data[..]);
-
-            // Random share version in {0,1}
-            let share_version = rng.gen_bool(0.5);
 
             // Namespace for the blob
             let ns = Namespace::new_v0(&[1, 2, 3, 4, 5]).expect("invalid namespace");
@@ -231,6 +228,7 @@ mod test {
             // Build the blob using the chosen app/share version
             let blob =
                 Blob::new(ns, data.clone(), AppVersion::V6).expect("blob construction failed");
+            let share_version = exact_u8_to_bool(blob.share_version);
 
             // Turn blob into shares (exact SHARE_SIZE each)
             let shares: Vec<[u8; SHARE_SIZE]> = blob
