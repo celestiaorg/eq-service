@@ -25,9 +25,9 @@ cargo r -- --height <integer> --namespace "hex string" --commitment "base64 stri
 # https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
 cargo r -- --height 5967025 --namespace "c27fc4694d31d1" --commitment "Y+8haW3Hi89DdtT4AAgr1iZ4ELFbosTqF+UCnhc4adM="
 
-# Known working example from the Mocha Testnet (~0.125MB):
-# https://mocha-4.celenium.io/tx/a54e3b86dc095180ecda631e67e25ef9d8450dc1de5bd2af4dc2cfa50b4b3ac4
-cargo r -- --height 6062832 --namespace "5d251311f25b13a549e0" --commitment "JPqS2PmVBNdyo8IadhIgIzvgbV99LQido2LAEaCp+vY="
+# Known working example from the Mocha Testnet (~1.9kB):
+# https://mocha.celenium.io/tx/bc6110376a9db2dcf70d29270f40bfd13eacacd26ad52c286f8e5414220d1902
+cargo r -- --height 8136361 --namespace "2777d4d961c75a526dd8" --commitment "daNbPqcPOZRD/FgPjVUCQIlKVwxYi15VpksJPQNp7ss="
 
 # Known working example from the Mocha Testnet (~1MB):
 # https://mocha.celenium.io/tx/7c182a01d9beee329023781743d8b9633e988802056d58cd9499dc9d8e164433?tab=messages

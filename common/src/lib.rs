@@ -92,15 +92,19 @@ pub fn compute_blob_keccak(raw_shares: Vec<[u8; SHARE_SIZE]>) -> [u8; 32] {
         let info = bytes[info_offset];
         let version = info >> 1;
 
+        // start after namespace + share info + (maybe) signer + seq-len
         let mut offset = info_offset + SHARE_INFO_BYTES + SEQUENCE_LEN_BYTES;
         if version == 1 {
-            offset += SIGNER_SIZE;
+            offset = offset.saturating_add(SIGNER_SIZE);
         }
 
-        let content_len = FIRST_SPARSE_SHARE_CONTENT_SIZE;
+        // dynamically compute the available content bytes in this share
+        let available = bytes.len().saturating_sub(offset);
+        // if you truly want to cap by a protocol constant, clamp to it; otherwise just use `available`
+        let take = available.min(FIRST_SPARSE_SHARE_CONTENT_SIZE);
 
         match version {
-            0 | 1 => hasher.update(&bytes[offset..offset + content_len]),
+            0 | 1 => hasher.update(&bytes[offset..offset + take]),
             other => panic!("unsupported share version {} in first share", other),
         }
     }
@@ -108,18 +112,21 @@ pub fn compute_blob_keccak(raw_shares: Vec<[u8; SHARE_SIZE]>) -> [u8; 32] {
     for share in iter {
         let bytes = share.as_ref();
         let info = bytes[NAMESPACE_SIZE];
-        let version = info >> 1; // same logic for share version
+        let version = info >> 1;
+
         let offset = NAMESPACE_SIZE + SHARE_INFO_BYTES;
-        let content_len = CONTINUATION_SPARSE_SHARE_CONTENT_SIZE;
+        let available = bytes.len().saturating_sub(offset);
+        let take = available.min(CONTINUATION_SPARSE_SHARE_CONTENT_SIZE);
 
         match version {
-            0 | 1 => hasher.update(&bytes[offset..offset + content_len]),
+            0 | 1 => hasher.update(&bytes[offset..offset + take]),
             other => panic!("unsupported share version {} in continuation share", other),
         };
     }
 
     hasher.finalize().into()
 }
+
 
 #[cfg(test)]
 mod test {
