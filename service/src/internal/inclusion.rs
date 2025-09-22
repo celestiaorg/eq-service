@@ -271,6 +271,15 @@ impl InclusionService {
             row_proof: range.proof.row_proof.clone(),
         };
 
+        // NOTE: we only support share versions 0 and 1 - ALL future versions will panic
+        // for the zkVM proof, we should never be able to create a valid proof with
+        // forged versions/mangled shares, as the ShareProof.verify will fail
+        let share_version = match blob.share_version {
+            0 => false,
+            1 => true,
+            other => panic!("unsupported share_version: {other} -- see https://celestiaorg.github.io/celestia-app/shares.html"),
+        };
+
         share_proof
             .verify(header.dah.hash())
             .map_err(|_| InclusionServiceError::FailedShareRangeProofSanityCheck)?;
@@ -278,6 +287,7 @@ impl InclusionService {
         debug!("Creating ZK Proof input from Celestia Data");
         let proof_input = ZKStackEqProofInput {
             share_proof,
+            share_version,
             data_root: header.dah.hash().as_bytes().try_into().map_err(|_| {
                 InclusionServiceError::InternalError(
                     "Failed to convert header.dah.hash().as_bytes() to [u8; 32]".to_string(),

@@ -27,6 +27,7 @@ pub mod eqs {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ZKStackEqProofInput {
     pub share_proof: ShareProof,
+    pub share_version: bool,
     pub data_root: [u8; 32],
     pub batch_number: u32,
     pub chain_id: u64,
@@ -77,56 +78,49 @@ impl ZKStackEqProofOutput {
     }
 }
 
-/// Computes Keccak‐256 over the reconstructed blob bytes by streaming
-/// payload portions of each share, skipping headers and, for version 1, the signer.
-/// Supports share versions 0 and 1; panics on unknown versions.
+/// Computes Keccak‐256 over the reconstructed blob bytes from shares.
+/// Supports share versions 0 (false) and 1 (true).
 ///
 /// See: https://celestiaorg.github.io/celestia-app/shares.html#share-version
-pub fn compute_blob_keccak(raw_shares: Vec<[u8; SHARE_SIZE]>) -> [u8; 32] {
+///
+/// The caller MUST:
+/// - Pass a non-empty, well-formed sequence of shares for a single blob
+/// - Ensure `first_version` is the correct share version for this sequence
+/// - Ensure all offsets fit within `SHARE_SIZE`
+/// If not, this function may panic.
+pub fn compute_blob_keccak(raw_shares: &[[u8; SHARE_SIZE]], share_version: bool) -> [u8; 32] {
     let mut hasher = Keccak256::new();
-    let mut iter = raw_shares.iter();
 
-    if let Some(first_share) = iter.next() {
-        let bytes = first_share.as_ref();
-        let info_offset = NAMESPACE_SIZE;
-        let info = bytes[info_offset];
-        let version = info >> 1;
+    // first share (assumed sequence_start = 1, version = first_version)
+    let first = raw_shares.first().expect("empty shares");
+    update_first_share(&mut hasher, share_version, first.as_ref());
 
-        // start after namespace + share info + (maybe) signer + seq-len
-        let mut offset = info_offset + SHARE_INFO_BYTES + SEQUENCE_LEN_BYTES;
-        if version == 1 {
-            offset = offset.saturating_add(SIGNER_SIZE);
-        }
-
-        // dynamically compute the available content bytes in this share
-        let available = bytes.len().saturating_sub(offset);
-        // if you truly want to cap by a protocol constant, clamp to it; otherwise just use `available`
-        let take = available.min(FIRST_SPARSE_SHARE_CONTENT_SIZE);
-
-        match version {
-            0 | 1 => hasher.update(&bytes[offset..offset + take]),
-            other => panic!("unsupported share version {} in first share", other),
-        }
-    }
-
-    for share in iter {
-        let bytes = share.as_ref();
-        let info = bytes[NAMESPACE_SIZE];
-        let version = info >> 1;
-
-        let offset = NAMESPACE_SIZE + SHARE_INFO_BYTES;
-        let available = bytes.len().saturating_sub(offset);
-        let take = available.min(CONTINUATION_SPARSE_SHARE_CONTENT_SIZE);
-
-        match version {
-            0 | 1 => hasher.update(&bytes[offset..offset + take]),
-            other => panic!("unsupported share version {} in continuation share", other),
-        };
+    // continuation shares (assumed sequence_start = 0)
+    for share in &raw_shares[1..] {
+        update_cont_share(&mut hasher, share.as_ref());
     }
 
     hasher.finalize().into()
 }
 
+/// Fast helpers with no validation. They panic on bad input.
+#[inline(always)]
+fn update_first_share(hasher: &mut Keccak256, version: bool, bytes: &[u8]) {
+    // universal prefix + seq-len (+ signer for v1)
+    let base = NAMESPACE_SIZE + SHARE_INFO_BYTES + SEQUENCE_LEN_BYTES;
+    let offset = if version { base + SIGNER_SIZE } else { base };
+    let end = offset + FIRST_SPARSE_SHARE_CONTENT_SIZE;
+    // Intentionally rely on slice bounds (will panic if caller miscomputed).
+    hasher.update(&bytes[offset..end]);
+}
+
+/// Fast helpers with no validation. They panic on bad input.
+#[inline(always)]
+fn update_cont_share(hasher: &mut Keccak256, bytes: &[u8]) {
+    let offset = NAMESPACE_SIZE + SHARE_INFO_BYTES;
+    let end = offset + CONTINUATION_SPARSE_SHARE_CONTENT_SIZE;
+    hasher.update(&bytes[offset..end]);
+}
 
 #[cfg(test)]
 mod test {

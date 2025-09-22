@@ -20,7 +20,7 @@ pub fn main() {
     println!("cycle-tracker-end: verify NMT proof");
 
     println!("cycle-tracker-start: compute keccak hash from shares");
-    let computed_keccak = compute_blob_keccak(input.share_proof.data);
+    let computed_keccak = compute_blob_keccak(&input.share_proof.data, input.share_version);
     println!("cycle-tracker-end: compute keccak hash from shares");
 
     println!("cycle-tracker-start: commit");
