@@ -51,6 +51,7 @@ prometheus-client = "0.24"
 hyper = "1.7"
 hyper-util = "0.1"
 http-body-util = "0.1"
+rand = "0.8"
 
 sha3 = "=0.10.8"
 [patch.crates-io]

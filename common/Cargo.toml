@@ -17,6 +17,9 @@ prost = { workspace = true, optional = true }
 tonic = { workspace = true, features = ["codegen", "prost"], optional = true }
 prometheus-client = { workspace = true, optional = true }
 
+[dev-dependencies]
+rand = { workspace = true }
+
 [build-dependencies]
 tonic-build = { workspace = true, features = ["prost"], optional = true }
 

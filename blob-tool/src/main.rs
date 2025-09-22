@@ -4,7 +4,7 @@ use base64::Engine;
 use celestia_rpc::{BlobClient, Client, HeaderClient, ShareClient};
 use celestia_types::{blob::Commitment, nmt::Namespace, ShareProof};
 use clap::Parser;
-use eq_common::ZKStackEqProofInput;
+use eq_common::{exact_u8_to_bool, tail_padding_for_len, ZKStackEqProofInput};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -63,11 +63,7 @@ async fn main() -> anyhow::Result<()> {
     // NOTE: we only support share versions 0 and 1 - ALL future versions will panic
     // for the zkVM proof, we should never be able to create a valid proof with
     // forged versions/mangled shares, as the ShareProof.verify will fail
-    let share_version = match blob.share_version {
-        0 => false,
-        1 => true,
-        other => panic!("unsupported share_version: {other} -- see https://celestiaorg.github.io/celestia-app/shares.html"),
-    };
+    let share_version = exact_u8_to_bool(blob.share_version);
 
     // Sanity Check inclusion proof
     share_proof.verify(header.dah.hash())?;
@@ -75,7 +71,8 @@ async fn main() -> anyhow::Result<()> {
     let proof_input = ZKStackEqProofInput {
         share_proof,
         share_version,
-        data_root: header.dah.hash().as_bytes().try_into()?,
+        tail_padding: tail_padding_for_len(blob.data.len()),
+        data_availability_root: header.dah.hash().as_bytes().try_into()?,
         batch_number: 0,
         chain_id: 0,
     };
