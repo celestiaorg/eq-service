@@ -21,16 +21,11 @@ set +a       # Stop automatically exporting variables
 # Tesetnet: https://mocha-4.celenium.io/
 cargo r -- --height <integer> --namespace "hex string" --commitment "base64 string"
 
-# Known working example from the Mocha Testnet (~1.5MB):
-# https://mocha.celenium.io/tx/30a274a332e812df43cef70f395c413df191857ed581b68c44f05a3c5c322312
-cargo r -- --height 5967025 --namespace "c27fc4694d31d1" --commitment "Y+8haW3Hi89DdtT4AAgr1iZ4ELFbosTqF+UCnhc4adM="
-
-# Known working example from the Mocha Testnet (~1.9kB):
+# Known working example from the Mocha Testnet (~1.85kB):
 # https://mocha.celenium.io/tx/bc6110376a9db2dcf70d29270f40bfd13eacacd26ad52c286f8e5414220d1902
 cargo r -- --height 8136361 --namespace "2777d4d961c75a526dd8" --commitment "daNbPqcPOZRD/FgPjVUCQIlKVwxYi15VpksJPQNp7ss="
 
-# Known working example from the Mocha Testnet (~1MB):
-# https://mocha.celenium.io/tx/7c182a01d9beee329023781743d8b9633e988802056d58cd9499dc9d8e164433?tab=messages
-cargo r -- --height 7459012 --namespace "736f762d6d696e692d64" --commitment "UO0o/fdzhobbekE/HyYAH6FK5jGkdpSMHyxeclQHvWc="
-
+# Known working example from the Mocha Testnet (~5.47kB):
+# https://mocha.celenium.io/tx/2c33302de8b183d40a16c53411dc6f441356558c69c386b02a66c1f0b1f59b24
+cargo r -- --height 8135203 --namespace "8f8736b6ff9dc08065a6" --commitment "pALxAoqv6WCyJ1PvFk/ZGPvoGMIHeZDjhP/0LeKLVKE="
 ```
