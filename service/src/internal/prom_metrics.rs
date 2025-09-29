@@ -2,7 +2,7 @@ use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full};
 use hyper::{body::Bytes, server::conn::http1, service::service_fn, Request, Response};
 use hyper_util::rt::TokioIo;
-use jsonrpsee::tracing::info;
+use log::info;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::{
     encoding::text::encode, metrics::counter::Counter, metrics::histogram::Histogram,
