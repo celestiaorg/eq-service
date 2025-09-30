@@ -227,7 +227,7 @@ mod test {
 
             // Build the blob using the chosen app/share version
             let blob =
-                Blob::new(ns, data.clone(), AppVersion::V6).expect("blob construction failed");
+                Blob::new(ns, data.clone(), None, AppVersion::V6).expect("blob construction failed");
             let share_version = exact_u8_to_bool(blob.share_version);
 
             // Turn blob into shares (exact SHARE_SIZE each)

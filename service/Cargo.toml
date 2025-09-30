@@ -31,3 +31,6 @@ http-body-util = { workspace = true }
 
 [build-dependencies]
 sp1-build = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
