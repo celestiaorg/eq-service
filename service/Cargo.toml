@@ -18,7 +18,7 @@ celestia-rpc = { workspace = true }
 tokio = { workspace = true }
 tonic = { workspace = true, features = ["transport"] }
 sled = { workspace = true }
-sp1-sdk = { workspace = true }
+sp1-sdk = { workspace = true , default-features = false, features = ["network"]}
 env_logger = { workspace = true }
 log = { workspace = true }
 hex = { workspace = true }
