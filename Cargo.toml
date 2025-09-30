@@ -23,8 +23,8 @@ eq-common = { path = "common", version = "0.1.12" }
 eq-sdk = { path = "sdk", version = "0.1.12" }
 
 clap = "4.5"
-celestia-types = "0.15"
-celestia-rpc = "0.13"
+celestia-types = "0.16.0"
+celestia-rpc = "0.14.0"
 nmt-rs = "0.2"
 sp1-zkvm = { version = "5.2", features = ["verify"] }
 sp1-sdk = { version = "5.2" }
@@ -43,7 +43,7 @@ tonic-build = { version = "0.12", default-features = false }
 env_logger = "0.11"
 log = "0.4"
 base64 = "0.22"
-jsonrpsee = "0.25"
+jsonrpsee = { version = "0.26", default-features = false, features = ["jsonrpsee-core"] }
 prometheus-client = "0.24"
 hyper = "1.6"
 hyper-util = "0.1"
