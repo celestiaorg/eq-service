@@ -1,5 +1,5 @@
 use clap::Parser;
-use eq_sdk::{types::BlobId, EqClient, JobId};
+use eq_sdk::{EqClient, JobId};
 use tonic::transport::Endpoint;
 
 #[derive(Parser, Debug)]
