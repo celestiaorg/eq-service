@@ -12,7 +12,7 @@ use log::{debug, error, info};
 use sha3::{Digest, Sha3_256};
 use sled::{Transactional, Tree as SledTree};
 use sp1_sdk::{
-    network::Error as SP1NetworkError, NetworkProver as SP1NetworkProver, Prover,
+    network::{Error as SP1NetworkError, FulfillmentStrategy}, NetworkProver as SP1NetworkProver, Prover,
     SP1ProofWithPublicValues, SP1Stdin,
 };
 use std::sync::Arc;
@@ -448,6 +448,8 @@ impl InclusionService {
         stdin.write(&proof_input);
         let request_id: SuccNetJobId = zk_client_handle
             .prove(&proof_setup.pk, &stdin)
+            .strategy(FulfillmentStrategy::Auction)
+            .gas_limit(50_000_000)
             .groth16()
             .skip_simulation(false)
             .timeout(self.config.zk_proof_gen_timeout)
