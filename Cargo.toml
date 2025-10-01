@@ -28,7 +28,7 @@ celestia-types = "0.16.0"
 celestia-rpc = "0.14.0"
 nmt-rs = "0.2"
 sp1-zkvm = { version = "5.2", features = ["verify"] }
-sp1-sdk = { version = "5.2" }
+sp1-sdk = { version = "5.2" , default-features = false, features = ["network"] }
 sp1-build = { version = "5.2" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_with = "3.14"
