@@ -1460,7 +1460,7 @@ dependencies = [
 
 [[package]]
 name = "blob-tool"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2586,7 +2586,7 @@ dependencies = [
 
 [[package]]
 name = "eq-common"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "celestia-types",
  "prometheus-client",
@@ -2601,7 +2601,7 @@ dependencies = [
 
 [[package]]
 name = "eq-program-keccak-inclusion"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "celestia-types",
  "eq-common",
@@ -2610,7 +2610,7 @@ dependencies = [
 
 [[package]]
 name = "eq-sdk"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -2625,7 +2625,7 @@ dependencies = [
 
 [[package]]
 name = "eq-service"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "bincode",
  "celestia-rpc",
@@ -5612,7 +5612,7 @@ checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 
 [[package]]
 name = "runner-keccak-inclusion"
-version = "0.1.12"
+version = "0.1.13"
 dependencies = [
  "clap",
  "eq-common",
