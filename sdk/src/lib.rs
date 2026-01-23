@@ -18,6 +18,7 @@ impl EqClient {
     pub fn new(grpc_channel: Channel) -> Self {
         Self { grpc_channel }
     }
+    #[allow(clippy::manual_async_fn)]
     pub fn get_zk_stack<'a>(
         &'a self,
         request: &'a JobId,
@@ -39,10 +40,8 @@ impl EqClient {
                 chain_id: request.l2_chain_id,
             };
             let mut client = InclusionClient::new(self.grpc_channel.clone());
-            match client.get_zk_stack(request).await {
-                Ok(response) => Ok(response.into_inner()),
-                Err(e) => Err(e),
-            }
+            let response = client.get_zk_stack(request).await?;
+            Ok(response.into_inner())
         }
     }
 }

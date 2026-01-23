@@ -81,7 +81,7 @@ impl std::fmt::Debug for BlobId {
             "Invalid v0 ID".to_string()
         };
         let commitment_string =
-            base64::engine::general_purpose::STANDARD.encode(&self.commitment.hash());
+            base64::engine::general_purpose::STANDARD.encode(self.commitment.hash());
         f.debug_struct("BlobId")
             .field("height", &self.height.value())
             .field("namespace", &namespace_string)
@@ -99,7 +99,7 @@ impl Display for BlobId {
             "Invalid v0 ID".to_string()
         };
         let commitment_string =
-            base64::engine::general_purpose::STANDARD.encode(&self.commitment.hash());
+            base64::engine::general_purpose::STANDARD.encode(self.commitment.hash());
         write!(
             f,
             "{}:{}:{}",
@@ -135,7 +135,7 @@ impl FromStr for BlobId {
         let c_hash: [u8; 32] = c_bytes
             .try_into()
             .map_err(|_| "Commitment must be 32 bytes!")?;
-        let commitment = Commitment::new(c_hash.into());
+        let commitment = Commitment::new(c_hash);
 
         Ok(Self {
             height,
