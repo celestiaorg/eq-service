@@ -127,8 +127,8 @@ pub fn compute_share_raw_data_keccak(
 
     // 2) Full continuation shares in the middle (and optionally the last if full)
     let full_end = if last_full { n } else { n - 1 };
-    for i in 1..full_end {
-        let si = raw_shares[i].as_ref();
+    for si in raw_shares.iter().take(full_end).skip(1) {
+        let si = si.as_ref();
         let endi = off_cont + CONTINUATION_SPARSE_SHARE_CONTENT_SIZE;
         hasher.update(&si[off_cont..endi]);
     }
